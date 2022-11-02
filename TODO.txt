@@ -1,0 +1,35 @@
+NEXT:
+create crate from db
+add some random features to db tracks
+
+
+
+musicbrainz
+https://python-musicbrainzngs.readthedocs.io/en/v0.7.1/usage/
+- get MusicBrainz IDs from .search_artist
+- ... then you can use .musicbrainzngs.get_artist_by_id (if needed)
+
+https://beets.readthedocs.io/en/stable/plugins/smartplaylist.html
+
+https://github.com/adammillerio/cratedigger
+
+possibly useful beetz plugins:
+https://github.com/geigerzaehler/beets-alternatives
+https://github.com/8h2a/beets-barcode (barcodes)
+https://github.com/geigerzaehler/beets-check (file integrity)
+https://github.com/adamjakab/BeetsPluginYearFixer (year v original_year)
+
+serato tags:
+GEOB:Serato Markers_ = loops?
+GEOB:Serato Markers2 = simple cue points
+"The `Serato Markers_` tag stores information about the first 5 Cues and 9
+Loops.  This is redunant with some of the information from the [`Serato
+Markers2`](serato_markers2.md) tag. Serato will prefer information from `Serato
+Markers_` if it's present."
+
+TXXX:SERATO_PLAYCOUNT
+
+GEOB:Serato Overview
+GEOB:Serato Analysis
+GEOB:Serato Autotags = bpm, autogain, gain db -- autotags.replace("\x01", " ").replace("\x00", " ").strip()
+GEOB:Serato Offsets_
