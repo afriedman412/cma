@@ -1,6 +1,31 @@
 import struct
-from serato_query import SeratoObject, label_table, verbose
-from Typing import List
+from serato_query import SeratoStorage, SeratoObject, label_table, verbose
+from typing import List
+
+def song_to_object(path):
+    encoded_path = path.encode("utf-16be")
+    l = len(encoded_path)
+    return SeratoObject('otrk', l+8, [SeratoObject('ptrk', l, path)])
+
+def make_playlist(track_paths: List, crate_name: str="1000"):
+    crate_path = '/Users/af412/Music/_Serato_/Subcrates/crystal lake 111721.crate'
+    r = SeratoStorage()
+    r.load_all_data(crate_path)
+    r.yield_all()
+
+    r.objects = [o for o in r.objects if o.object_type!='otrk']
+    new_track_objects = [song_to_object(path) for path in track_paths]
+
+    print("adding paths...")
+    for p in track_paths:
+        print(p)
+
+    r.objects += new_track_objects
+
+    new_crate_path = f"/Users/af412/Music/_Serato_/Subcrates/crystal lake {crate_name}.crate"
+    print(f"exporting crate {new_crate_path}")
+    with open(new_crate_path, "wb+") as f:
+        unparse_and_write(r.objects, f)
 
 def unparse_object(o: SeratoObject):
         dtype, label = label_table.get(o.object_type, (None, None))

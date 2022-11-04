@@ -19,6 +19,9 @@ mutagen = "^1.46.0"
 musicbrainzngs = "^0.7.1"
 beets = "^1.6.0"
 pylast = "^5.1.0"
+tkinterdnd2 = "^0.3.0"
+tkterminal = "^0.1.0"
+typing-extensions = "^4.4.0"
 
 [tool.poetry.dev-dependencies]
 

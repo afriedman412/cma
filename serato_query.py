@@ -136,7 +136,7 @@ label_table = {
             "trmx": ("s", "remix?"),
             "tsiz": ("s", "size"),
             "tgrp": ("s", "grouping"),
-            "vrsn": ("vrsn", "version"),
+            "vrsn": ("s", "version"),
             "tvcn": ("s", "col_name"),
             "tvcw": ("s", "col_width"),
             "uadd": ("u32", "ts_added"),
@@ -161,4 +161,5 @@ label_table = {
             "bbgl": ("u8", "bgl"),
             "bkrk": ("u8", "krk"),
             "brev": ("u8", "brev")
+            
         }
