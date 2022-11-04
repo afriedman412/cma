@@ -6,6 +6,13 @@ https://github.com/Saadmairaj/tkterminal
 
 - create playlists
 - read/write serato crates
+
+reading works!
+
+writing? creating? --> see seratopy code
+smartcrates?
+
+- import from seratodb maybe?
 """
 
 
@@ -68,7 +75,7 @@ class App():
     def load_sidebar(self):
         with sqlite3.connect(path) as conn:
             cur = conn.cursor()
-            cur.execute(f"SELECT distinct(artist) FROM {self.table}")
+            cur.execute(f"SELECT distinct(artist) FROM {self.table} ORDER BY artist desc")
             artists = [' '.join(a) for a in cur.fetchall()]
         
         artist_var = tk.Variable(value=artists)
@@ -91,8 +98,6 @@ class App():
     def update(self, q):
         if self.has_data:
             self.tree.delete(*self.tree.get_children())
-
-        print(q)
 
         self.get_data(q)
 
