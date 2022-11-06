@@ -1,5 +1,6 @@
 import struct
-from serato_query import SeratoStorage, SeratoObject, label_table, verbose
+from serato_query import SeratoStorage, SeratoObject, verbose
+from assets import label_table
 from typing import List
 
 def song_to_object(path):
