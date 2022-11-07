@@ -14,5 +14,5 @@ questions:
 - are imported songs being encoded correctly?
 - will they be re-encoded if serato adds more tags?
 - what is the minimum info needed for a serato to read a song?
-- can you add a song to a crate if its not in the serato library?
-- do you need crate info pre-loaded?
+- can you add a song to a crate if its not in the serato library? -- YES
+- do you need crate info pre-loaded? -- NO

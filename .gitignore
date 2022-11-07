@@ -10,3 +10,6 @@ notes.md
 .env
 .flaskenv
 test.py
+other_packages/*
+notebooks/*
+testo.py
