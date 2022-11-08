@@ -8,7 +8,7 @@ import mmap
 import struct
 from mutagen.id3 import ID3
 from ..config.assets import label_table, serato_id3_import_table
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Union
 import os
 
 verbose = False
@@ -22,7 +22,7 @@ class SeratoObject:
         self.set_object_len()
 
         if object_len:
-            assert object_len == self.object_len,f"Provided object length ({object_len}) != calculated object len ({self.object_len})"
+            assert object_len == self.object_len, f"Provided object length ({object_len}) != calculated object len ({self.object_len})"
         
     def __repr__(self):
         return f"(type: {self.object_type} // len: {self.object_len} // data: {self.object_data})"
@@ -34,24 +34,11 @@ class SeratoObject:
         encoded_data = self.encode_data()
         self.object_len = len(encoded_data)
 
-        ### THIS IS THE OLD VERSION, YOU PROBABLY DON'T NEED IT
-        # if isinstance(self.object_data, list):
-        #     l = len(self.encode_compound_data())
-        # elif self.dtype[0] == "u":
-        #     len_table = {"u8": 1, "u16": 2, "u32": 4}
-        #     l = len_table[self.dtype]
-        # elif not self.dtype:
-        #     l = 0
-        # else: # if self.dtype == "s":
-        #     l = 2*(len(str(self.object_data))) # tweaked for ID3TimeStamp objects -- verify this!
-
-    def load_keys_set_len(self):
+    def data_keys(self):
         """
-        To run after loading data.
+        Having a function to get these is easier than re-setting it every time it might have gotten updated.
         """
-        # print(f"loading keys, setting len, {self.object_type}")
-        self.set_object_len()
-        self.data_keys = [d.object_type for d in self.object_data]
+        return list(set([d.object_type for d in self.object_data]))
 
     def encode_compound_data(self) -> bytes:
         """
@@ -72,6 +59,12 @@ class SeratoObject:
         """
         For all serato objects. 
         """
+        if self.object_type == "utkn":
+            try:
+                self.object_data = int(self.object_data.split("/")[0])
+            except (TypeError, AttributeError):
+                pass
+
         encoded_data = b""
         if isinstance(self.object_data, List):
             encoded_data = self.encode_compound_data()
@@ -84,7 +77,7 @@ class SeratoObject:
             try:
                 encoded_data = struct.pack(encoding_table[self.dtype], int(self.object_data))
             except:
-                raise ValueError(f"encoding table expected integer for {self.object_type} ({self.dtype})")
+                raise ValueError(f"encoding table expected integer for {self.object_type} ({self.dtype}), value {self.object_data}")
 
         return encoded_data
 
@@ -99,39 +92,47 @@ class SeratoObject:
         
         return encoded_type, encoded_len, encoded_data
 
-
 class SeratoTrack(SeratoObject):
     def __init__(self, path: str=None, import_data: bool=True):
         super(SeratoTrack, self).__init__()
         self.object_type = "otrk"
         if path:
             if import_data:
-                self.songs_to_data(path)
-                self.object_data.append(SeratoObject("pfil", path))
+                self.import_song_data(path)
             else:
                 self.object_data = [SeratoObject("ptrk", path)]
-            self.load_keys_set_len()
+                self.set_object_len()
         return
 
     def __repr__(self):
-        if 'pfil' in self.data_keys:
-            song_title = ""
-            for k in ['tit2', 'tsng']:
-                if k in self.data_keys:
-                    song_title = self.get_data_by_tag(k)
-
-            song_artist = self.get_data_by_tag('tart')
-            
-            return ": ".join([song_artist, song_title])
-        else:
+        try:
+            return ": ".join([self.song_artist, self.song_title])
+        except AttributeError:
             return f"(type: {self.object_type} // len: {self.object_len} // data: {self.object_data})"
 
     def get_data_by_tag(self, tag):
-        if tag in self.data_keys:
+        if tag in self.data_keys():
             return [d.object_data for d in self.object_data if d.object_type==tag][0]
         else:
             return "(NO DATA)"
-    
+
+    def set_song_info(self):
+        for k in ['tit2', 'tsng']:
+            if k in self.data_keys():
+                self.song_title = self.get_data_by_tag(k)
+
+        self.song_artist = self.get_data_by_tag('tart')
+
+    def import_song_data(self, path: str=None):
+        while not path:
+            for t in ['pfil', 'ptrk']:
+                if t in self.data_keys():
+                    path = self.get_data_by_tag(t)
+        self.songs_to_data(path)
+        
+        self.object_data += [SeratoObject(t, path) for t in ["pfil", "ptrk"] if t not in self.data_keys()]
+        self.set_song_info()
+
     def songs_to_data(self, path: str):
         # TODO: add other possible tags
         imported_data = self.extract_song_data(path)
@@ -142,12 +143,15 @@ class SeratoTrack(SeratoObject):
         """
         This assumes the file is an mp3!!
         """
-        i = ID3(path)
+        try:
+            i = ID3(os.path.abspath(path))
+        except:
+            i = ID3("/" + path)
         
         def import_tag(k):
             try: 
                 return i.get(k).text[0]
-            except AttributeError:
+            except (AttributeError, IndexError) as e:
                 return None
 
         imported_data = {
@@ -162,7 +166,7 @@ class SeratoTrack(SeratoObject):
 
 class SeratoStorage:
     """
-    For DB or crate, although crate has its own class.
+    For DB or crate, although crate has its own subclass.
 
     TODO: DB class?
     """
@@ -211,7 +215,7 @@ class SeratoStorage:
         # TODO: clean up the auto-key loading here, and in reset_object
         if self.object:
             if isinstance(self.object, SeratoTrack):
-                self.object.load_keys_set_len()
+                self.object.set_object_len()
 
             self.objects.append(self.object)
 
@@ -260,7 +264,7 @@ class SeratoStorage:
         try:
             if self.object:
                 if isinstance(self.object, SeratoTrack):
-                    self.object.load_keys_set_len()
+                    self.object.set_object_len()
                 self.objects.append(self.object)
         except AttributeError:
             pass
@@ -292,7 +296,7 @@ class SeratoStorage:
         Recalculate the object length for all objects.
         """
         for o in self.objects:
-            o.load_keys_set_len()
+            o.set_object_len()
 
     def encode_and_write(self, output_path: str):
         encoded_objects = [b"".join(list(o.encode_object())) for o in self.objects]
@@ -306,7 +310,9 @@ class SeratoCrate(SeratoStorage):
     """
     New crate. Load from path if provided, otherwise create an empty crate.
 
-    TODO: see if metadata is required.
+    Metadata is not required!
+
+    TODO: Write light crate (only otrk and ptrk)
     """
     def __init__(self, path: Optional[str]=None):
         super(SeratoCrate, self).__init__(path)
@@ -314,10 +320,26 @@ class SeratoCrate(SeratoStorage):
             self.objects.append(SeratoObject('vrsn', "1.0/Serato ScratchLive Crate"))
         return
 
-    def add_track(self, file_path: str):
-        if "/" not in file_path:
-            file_path = os.path.join(os.getcwd(), file_path)
-        track_object = SeratoTrack(file_path, False)
+    def tracks(self):
+        return [o for o in self.objects if o.object_type=='otrk']
+
+    def add_track(self, input: Union[str, SeratoTrack]):
+        if isinstance(input, str):
+            file_path = os.path.abspath(input)
+            track_object = SeratoTrack(file_path)
+        else:
+            track_object = input
         self.objects.append(track_object)
 
+    def add_tracks(self, inputs: List[str]):
+        for i in inputs:
+            self.add_track(i)
+
+    def get_track_data(self):
+        """
+        Load info for tracks in crate.
+        """
+        for o in self.objects:
+            if o.object_type == 'otrk':
+                o.import_song_data()
     

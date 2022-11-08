@@ -104,6 +104,7 @@ serato_id3_import_table = {
     'TRCK': 'utkn',
     'TBPM': 'tbpm',
     'TDRC': 'ttyr',
+    'TDRL': 'ttyr',
     'TKEY': 'tkey',
     'TCOM': 'tcmp',
     'TSIZ': 'tsiz'

@@ -15,24 +15,34 @@ smartcrates?
 - import from seratodb maybe?
 """
 
+# TODO: implement info labels on imported tracks after making SeratoTrack metadata more accessible
 
 # https://www.activestate.com/resources/quick-reads/how-to-display-data-in-a-table-using-tkinter/
 # https://stackoverflow.com/questions/57772458/how-to-get-a-treeview-columns-to-fit-the-frame-it-is-within
 # https://stackoverflow.com/questions/22262147/how-do-i-make-a-resizeable-window-with-a-sidepanel-and-content-area
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import Frame, Listbox, ttk, messagebox
 from tkinterdnd2 import DND_FILES, TkinterDnD
-
+from typing import Optional
 import sqlite3
+import os
+import regex as re
+from mutagen.id3 import ID3
+
+from ..code.serato_query import SeratoCrate, SeratoTrack
+from ..config.assets import serato_path
+
+
 
 path = "/Users/af412/.config/beets/library.db"
 table ='items'
 columns = ['id', 'path', 'title', 'artist']
 
-class App():
+class MusicDBGUI():
 
-    def __init__(self, path, table, columns):
+    def __init__(self, path=path, table=table, columns=columns):
+        self.playlist = SeratoCrate()
 
         self.path = path
         self.table = table
@@ -42,16 +52,28 @@ class App():
         else:
             self.columns = columns
 
+        # set up root
         self.root = TkinterDnD.Tk()
-        self.root.drop_target_register(DND_FILES)
-        self.root.dnd_bind('<<Drop>>', self.drag_import)
+        self.root.geometry("1200x800")
 
-        self.frame = tk.Frame(self.root, width=500)
-        self.frame.pack(expand=True, fill='both', side='right')
-        self.tree = ttk.Treeview(self.frame, show="headings", columns=tuple(columns))
-        self.tree.pack(expand=True, fill=tk.BOTH)
+        # sidebar
+        self.sidebar = Frame(self.root, width=200)
+        self.sidebar.pack(expand=True, fill='both', side='left')
+        
+        # library
+        self.library = Frame(self.root, height=550)
+        self.library.pack(expand=True, fill='both', side='top'),
 
+        self.load_playlist()
+
+        # build tree
+        self.tree = ttk.Treeview(self.library, show="headings", columns=tuple(columns))
+        self.tree.pack(expand=True, fill='both')
+
+        # build sidebar (external function)
         self.load_sidebar()
+
+        # initate data
         self.update(f"SELECT {','.join(self.columns)} FROM {self.table}")
 
         self.root.mainloop()
@@ -78,12 +100,28 @@ class App():
         
         artist_var = tk.Variable(value=artists)
         self.artist_box = tk.Listbox(
-            self.root, 
+            self.sidebar, 
             listvariable=artist_var,
-            selectmode=tk.MULTIPLE
+            selectmode=tk.SINGLE
             )
-        self.artist_box.pack(side=tk.LEFT, expand=True, fill='both')
+        self.artist_box.pack(side='left', expand=True, fill='both')
         self.artist_box.bind("<<ListboxSelect>>", self.get_artists)
+
+    def load_playlist(self):
+        self.playlist_box = tk.Listbox(self.root, height=200)
+        self.playlist_box.drop_target_register(DND_FILES)
+        self.playlist_box.dnd_bind('<<Drop>>', self.drag_import)
+        self.playlist_box.pack(expand=True, fill='both', side='bottom')
+
+        tk.Button(
+            self.playlist_box, text="Export Playlist", command=self.export_playlist).pack(
+                side='bottom', fill='x'
+            )
+    
+    def populate_playlist_box(self):
+        self.playlist_box.delete(0, tk.END)
+        for t in self.playlist.tracks():
+            self.playlist_box.insert(tk.END, t)
 
     def get_artists(self, event):
         artists_selected = [f'"{self.artist_box.get(i)}"' for i in self.artist_box.curselection()]
@@ -108,14 +146,19 @@ class App():
         return True if has_tree else False
 
     def drag_import(self, event):
-        # new_window = tk.Toplevel()
-        # terminal = Terminal(new_window, pady=5, padx=5)
-        # terminal.shell = True
-        # terminal.pack(expand=True, fill='both')
-        # p = str(event.data)[1:-1]
-        # terminal.run_command(f"beet import \"{p}\"", give_input=None)
+        path = re.sub(r"[\{\}]", "", str(event.data))
+        self.playlist.add_track(path)
+        self.populate_playlist_box()
 
-        messagebox.showinfo("Dragged", event.data)
+    def export_playlist(self, crate_name: str="new crate"):
+        if crate_name[-6:] != ".crate":
+            crate_name = crate_name + ".crate"
+        crate_path = os.path.join(serato_path, "Subcrates", crate_name)
+        n = 0
+        while os.path.isfile(crate_path):
+            crate_name = ''.join([crate_name[:-6], "_", str(n), ".crate"])
+            crate_path = os.path.join(serato_path, "Subcates", crate_name)
+            n += 1
 
-
-App(path, table, columns)
+        print(crate_path)
+        self.playlist.encode_and_write(crate_path)
