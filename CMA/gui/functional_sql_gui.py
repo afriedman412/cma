@@ -24,13 +24,13 @@ smartcrates?
 import tkinter as tk
 from tkinter import Frame, Listbox, ttk, messagebox
 from tkinterdnd2 import DND_FILES, TkinterDnD
-from typing import Optional
+from typing import Optional, Callable
 import sqlite3
 import os
 import regex as re
 from mutagen.id3 import ID3
 
-from ..code.serato_query import SeratoCrate, SeratoTrack
+from ..code.serato_query_old import SeratoCrate, SeratoTrack, load_all_crates
 from ..config.assets import serato_path
 
 
@@ -71,7 +71,7 @@ class MusicDBGUI():
         self.tree.pack(expand=True, fill='both')
 
         # build sidebar (external function)
-        self.load_sidebar()
+        self.load_playlist_sidebar()
 
         # initate data
         self.update(f"SELECT {','.join(self.columns)} FROM {self.table}")
@@ -92,20 +92,37 @@ class MusicDBGUI():
             for r in rows:
                 self.tree.insert("", tk.END, values=r)
 
-    def load_sidebar(self):
+    def load_sidebar(self, var: tk.Variable, func: Callable):
+        """
+        Fills the sidebar with a listbox containing var, which does func on click.
+        """
+        self.sidebar_box = tk.Listbox(
+            self.sidebar, 
+            listvariable=var,
+            selectmode=tk.SINGLE
+            )
+        self.sidebar_box.pack(side='left', expand=True, fill='both')
+        self.sidebar_box.bind("<<ListboxSelect>>", func)
+        return
+
+    def load_playlist_sidebar(self):
+        """
+        Existing playlists
+        """
+        self.playlist_library = load_all_crates()
+
+        playlist_var = tk.Variable(self.playlist_library)
+        self.load_sidebar(playlist_var, self.get_playlist)
+
+
+    def load_artist_sidebar(self):
         with sqlite3.connect(path) as conn:
             cur = conn.cursor()
             cur.execute(f"SELECT distinct(artist) FROM {self.table} ORDER BY artist desc")
             artists = [' '.join(a) for a in cur.fetchall()]
         
         artist_var = tk.Variable(value=artists)
-        self.artist_box = tk.Listbox(
-            self.sidebar, 
-            listvariable=artist_var,
-            selectmode=tk.SINGLE
-            )
-        self.artist_box.pack(side='left', expand=True, fill='both')
-        self.artist_box.bind("<<ListboxSelect>>", self.get_artists)
+        self.load_sidebar(artist_var, self.get_artists)
 
     def load_playlist(self):
         self.playlist_box = tk.Listbox(self.root, height=200)
@@ -118,9 +135,10 @@ class MusicDBGUI():
                 side='bottom', fill='x'
             )
     
-    def populate_playlist_box(self):
+    def populate_playlist_box(self, crate: SeratoCrate=None):
         self.playlist_box.delete(0, tk.END)
-        for t in self.playlist.tracks():
+        crate = crate if crate else self.playlist
+        for t in crate.tracks():
             self.playlist_box.insert(tk.END, t)
 
     def get_artists(self, event):

@@ -7,12 +7,33 @@ TODO: add non-mp3 support!!!
 import mmap
 import struct
 from mutagen.id3 import ID3
-from ..config.assets import label_table, serato_id3_import_table
+from mutagen import MutagenError
+from ..config.assets import label_table, serato_id3_import_table, serato_path
 from typing import List, Tuple, Optional, Union
 import os
 
-verbose = False
+verbose = True
 ignore_unknown = False
+
+class TrackPathException(Exception):
+    pass
+
+def load_all_crates():
+    global verbose
+    crates = []
+    crate_dir = os.path.join(serato_path, "Subcrates")
+    for c in os.listdir(crate_dir):
+        try:
+            crate_path = os.path.join(crate_dir, c)
+            if verbose:
+                print("****" + c.upper(), crate_path)
+            crate = SeratoCrate(crate_path)
+            crate.get_track_data()
+        except IndexError:
+            continue
+    crates.append(crate)
+    return crates
+
 
 class SeratoObject:
     def __init__(self, object_type: str=None, object_data=None, object_len: int=None):
@@ -135,23 +156,31 @@ class SeratoTrack(SeratoObject):
 
     def songs_to_data(self, path: str):
         # TODO: add other possible tags
-        imported_data = self.extract_song_data(path)
-        for k, v in imported_data.items():
-            self.object_data.append(self.song_data_to_object(k, v))
+        try:
+            imported_data = self.extract_song_data(path)
+            for k, v in imported_data.items():
+                self.object_data.append(self.song_data_to_object(k, v))
+        except TrackPathException:
+            pass
     
     def extract_song_data(self, path: str):
         """
         This assumes the file is an mp3!!
         """
-        try:
-            i = ID3(os.path.abspath(path))
-        except:
-            i = ID3("/" + path)
-        
+        good_path = None
+        for path_ in [path, "/" + path, os.path.abspath(path)]:
+            if os.path.exists(path_):
+                good_path = path_
+                i = ID3(path_)
+                break
+
+        if not good_path:
+            raise TrackPathException(f"File not found: {path}")
+
         def import_tag(k):
             try: 
                 return i.get(k).text[0]
-            except (AttributeError, IndexError) as e:
+            except (AttributeError, IndexError):
                 return None
 
         imported_data = {
@@ -167,6 +196,8 @@ class SeratoTrack(SeratoObject):
 class SeratoStorage:
     """
     For DB or crate, although crate has its own subclass.
+
+    Also use to investigate tracks.
 
     TODO: DB class?
     """
@@ -235,10 +266,16 @@ class SeratoStorage:
     
     def parse_object(self, object_type, object_len):
         global ignore_unknown
+        global verbose
         dtype, label = label_table.get(object_type, (None, None))
-        
+
+        if verbose:
+            print(object_type, object_len, dtype, label)
+
         if dtype == "s":
             decoded_data = self.read_bytes(object_len).decode('utf-16be')
+            if verbose:
+                print(decoded_data)
             
         elif dtype == 'u32' and object_len == 4:
             decoded_data = struct.unpack(">I", self.read_bytes(4))[0]
@@ -314,11 +351,16 @@ class SeratoCrate(SeratoStorage):
 
     TODO: Write light crate (only otrk and ptrk)
     """
-    def __init__(self, path: Optional[str]=None):
+    def __init__(self, path: Optional[str]=None, name: Optional[str]="new_crate"):
         super(SeratoCrate, self).__init__(path)
+        self.crate_name = os.path.basename(path).replace(".crate", "") if path else name
+        
         if not path:
             self.objects.append(SeratoObject('vrsn', "1.0/Serato ScratchLive Crate"))
         return
+
+    def __repr__(self):
+        return self.crate_name
 
     def tracks(self):
         return [o for o in self.objects if o.object_type=='otrk']

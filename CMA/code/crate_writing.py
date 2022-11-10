@@ -3,7 +3,7 @@ These are all class functions now!
 """
 
 import struct
-from serato_query import SeratoStorage, SeratoObject, verbose
+from .serato_query_old import SeratoStorage, SeratoObject, verbose
 from ..config.assets import label_table
 from typing import List
 
