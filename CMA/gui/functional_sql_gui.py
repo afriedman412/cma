@@ -1,182 +1,239 @@
-"""
-Import via:
-https://github.com/Saadmairaj/tkterminal
-
-(drag and drop works though)
-
-- create playlists
-- read/write serato crates
-
-reading works!
-
-writing? creating? --> see seratopy code
-smartcrates?
-
-- import from seratodb maybe?
-"""
-
-# TODO: implement info labels on imported tracks after making SeratoTrack metadata more accessible
-
 # https://www.activestate.com/resources/quick-reads/how-to-display-data-in-a-table-using-tkinter/
 # https://stackoverflow.com/questions/57772458/how-to-get-a-treeview-columns-to-fit-the-frame-it-is-within
 # https://stackoverflow.com/questions/22262147/how-do-i-make-a-resizeable-window-with-a-sidepanel-and-content-area
 
 import tkinter as tk
-from tkinter import Frame, Listbox, ttk, messagebox
-from tkinterdnd2 import DND_FILES, TkinterDnD
-from typing import Optional, Callable
-import sqlite3
+from tkinter import ttk, simpledialog
+from tkinterdnd2 import DND_FILES, DND_TEXT, TkinterDnD
 import os
-import regex as re
-from mutagen.id3 import ID3
 
-from ..code.serato_query_old import SeratoCrate, SeratoTrack, load_all_crates
-from ..config.assets import serato_path
+from ..code.serato_advanced_classes import SeratoCrate
+from ..code.helpers import load_all_crates, DB
+from ..config.assets import db_table, db_columns
 
-
-
-path = "/Users/af412/.config/beets/library.db"
-table ='items'
-columns = ['id', 'path', 'title', 'artist']
-
-class MusicDBGUI():
-
-    def __init__(self, path=path, table=table, columns=columns):
-        self.playlist = SeratoCrate()
-
-        self.path = path
-        self.table = table
-
-        if not columns:
-            self.columns = self.get_columns()
+class MusicDBGUI:
+    def __init__(self, db_table=db_table, db_columns=db_columns):
+        self.db_table = db_table
+        if db_columns:
+            self.db_columns = db_columns
+            
         else:
-            self.columns = columns
+            columns = self.db_query(f"PRAGMA table_info([{self.db_table}]);")
+            self.db_columns =[c[1] for c in columns]
 
-        # set up root
-        self.root = TkinterDnD.Tk()
-        self.root.geometry("1200x800")
-
-        # sidebar
-        self.sidebar = Frame(self.root, width=200)
-        self.sidebar.pack(expand=True, fill='both', side='left')
-        
-        # library
-        self.library = Frame(self.root, height=550)
-        self.library.pack(expand=True, fill='both', side='top'),
-
-        self.load_playlist()
-
-        # build tree
-        self.tree = ttk.Treeview(self.library, show="headings", columns=tuple(columns))
-        self.tree.pack(expand=True, fill='both')
-
-        # build sidebar (external function)
-        self.load_playlist_sidebar()
+        self.playlist = None
+        self.active_playlist_index = None
+        self.init_grid()
+        self.init_sidebar()
+        self.init_library()
+        self.init_playlist()
+        self.init_searchbar()
 
         # initate data
-        self.update(f"SELECT {','.join(self.columns)} FROM {self.table}")
+        self.update(f"SELECT {','.join(self.db_columns)} FROM {self.db_table}")
 
         self.root.mainloop()
 
-    def get_columns(self):
-        with sqlite3.connect(self.path) as conn:
-            cur = conn.cursor()
-            columns = cur.execute(f"PRAGMA table_info([{self.table}]);")
-        return [c[1] for c in columns]
+    ### GRID FUNCTIONS
+    def init_grid(self):
+        self.root = TkinterDnD.Tk()
 
-    def get_data(self, q):
-        with sqlite3.connect(path) as conn:
-            cur = conn.cursor()
-            cur.execute(q)
-            rows = cur.fetchall()
-            for r in rows:
-                self.tree.insert("", tk.END, values=r)
+        self.root.rowconfigure(0, weight=0)
+        self.root.rowconfigure(1, weight=3, minsize=400)
+        self.root.rowconfigure(2, weight=0)
+        self.root.rowconfigure(3, weight=3, minsize=400)
+        self.root.rowconfigure(4, weight=3, minsize=25)
 
-    def load_sidebar(self, var: tk.Variable, func: Callable):
-        """
-        Fills the sidebar with a listbox containing var, which does func on click.
-        """
-        self.sidebar_box = tk.Listbox(
-            self.sidebar, 
-            listvariable=var,
-            selectmode=tk.SINGLE
-            )
-        self.sidebar_box.pack(side='left', expand=True, fill='both')
-        self.sidebar_box.bind("<<ListboxSelect>>", func)
+        self.root.columnconfigure(0, weight=2, minsize=300)
+        self.root.columnconfigure(1, weight=5, minsize=900)
         return
 
-    def load_playlist_sidebar(self):
+    def init_sidebar(self):
         """
-        Existing playlists
+        Populates the sidebar with the playlist library.
         """
-        self.playlist_library = load_all_crates()
-
-        playlist_var = tk.Variable(self.playlist_library)
-        self.load_sidebar(playlist_var, self.get_playlist)
-
-
-    def load_artist_sidebar(self):
-        with sqlite3.connect(path) as conn:
-            cur = conn.cursor()
-            cur.execute(f"SELECT distinct(artist) FROM {self.table} ORDER BY artist desc")
-            artists = [' '.join(a) for a in cur.fetchall()]
+        self.sidebar_label = tk.Label(self.root, text="PLAYLIST LIBRARY", anchor="n")
+        self.sidebar_label.grid(row=0, column=0, sticky="NS")
         
-        artist_var = tk.Variable(value=artists)
-        self.load_sidebar(artist_var, self.get_artists)
-
-    def load_playlist(self):
-        self.playlist_box = tk.Listbox(self.root, height=200)
-        self.playlist_box.drop_target_register(DND_FILES)
-        self.playlist_box.dnd_bind('<<Drop>>', self.drag_import)
-        self.playlist_box.pack(expand=True, fill='both', side='bottom')
-
-        tk.Button(
-            self.playlist_box, text="Export Playlist", command=self.export_playlist).pack(
-                side='bottom', fill='x'
+        self.playlist_library = load_all_crates()
+        playlist_var = tk.Variable(value=self.playlist_library)
+        self.sidebar_box = tk.Listbox(
+            self.root,
+            listvariable=playlist_var,
+            selectmode=tk.SINGLE,
             )
+        self.sidebar_box.bind("<<ListboxSelect>>", self.get_playlist)
+        self.sidebar_box.grid(row=1, column=0, rowspan=3, sticky="NEWS")
+
+        self.new_playlist_button = tk.Button(
+            self.root, 
+            text="New Playlist", 
+            command=self.create_new_playlist)
+        self.new_playlist_button.grid(row=4, column=0, sticky="EW")
+        return  
+
+    def init_library(self):
+        self.tree = ttk.Treeview(
+            self.root, show="headings", columns=tuple(db_columns))
+        self.tree.bind('<Double-Button-1>', self.add_playlist_track_from_library)
+        self.tree.grid(row=1, column=1, sticky="NEWS")
+        return
+
+    def track_info(self):
+        i = self.tree.item(self.tree.focus())
+        track_info_dict = dict(zip(self.db_columns, i['values']))
+        return track_info_dict
+
+    def init_searchbar(self):
+        self.search_frame = tk.Frame(self.root)
+        self.search_label = tk.Label(self.search_frame, text="SEARCH:")
+        self.search_label.pack(side="left", fill="x")
+
+        self.search_field = tk.Entry(self.search_frame)
+        self.search_field.pack(side="left", fill="x")
+
+        self.search_button = tk.Button(
+            self.search_frame, 
+            text="Search",
+            command=self.search_db
+            )
+        self.search_button.pack(side="left", fill="x")
+
+        self.search_frame.grid(row=0, column=1)
+
+    def init_playlist(self, playlist: SeratoCrate=None):
+        self.playlist_label = tk.Label(
+            self.root,
+            text=f"ACTIVE PLAYLIST: {playlist}", 
+            anchor="nw")
+        self.playlist_label.grid(row=2, column=1, sticky="EW")
+
+        self.playlist_box = tk.Listbox(self.root)
+        self.playlist_box.drop_target_register(DND_FILES, DND_TEXT)
+        self.playlist_box.dnd_bind('<<Drop>>', self.add_playlist_track_from_library)
+        self.playlist_box.grid(row=3, column=1, sticky="NEWS")
+
+        self.export_playlist_button = tk.Button(
+            self.root, 
+            text="Export Playlist", 
+            command=self.export_playlist)
+        self.export_playlist_button.grid(row=4, column=1)
+
+        if playlist:
+            self.populate_playlist_box(playlist)
     
-    def populate_playlist_box(self, crate: SeratoCrate=None):
-        self.playlist_box.delete(0, tk.END)
-        crate = crate if crate else self.playlist
-        for t in crate.tracks():
-            self.playlist_box.insert(tk.END, t)
+    ### TREE/DB MANAGEMENT
+    def db_query(self, q):
+        with DB() as db:
+            return db.query(q)
 
-    def get_artists(self, event):
-        artists_selected = [f'"{self.artist_box.get(i)}"' for i in self.artist_box.curselection()]
-        self.update(f"""
-            SELECT {','.join(self.columns)}
-            FROM {self.table}
-            WHERE artist IN ({",".join(artists_selected)});
-            """)
-
-    def update(self, q):
+    def update(self, q: str):
         if self.has_data:
             self.tree.delete(*self.tree.get_children())
-
-        self.get_data(q)
-
-        for c in columns:
+        
+        rows = self.db_query(q)
+        for r in rows:
+            self.tree.insert("", tk.END, values=r)
+        
+        for n, c in enumerate(db_columns):
             self.tree.heading(c, text=c)
-            self.tree.column(c)
+            if n == 0:
+                self.tree.column(c, width=50, stretch="NO")
+            else:
+                self.tree.column(c)
             
     def has_data(self):
         has_tree = self.tree.get_children()
         return True if has_tree else False
 
-    def drag_import(self, event):
-        path = re.sub(r"[\{\}]", "", str(event.data))
+    def search_db(self):
+        search_query = self.search_field.get()
+        q = f"""
+            SELECT *
+            FROM {db_table}
+            WHERE path LIKE "%{search_query}%"
+            OR artist LIKE "%{search_query}%"
+            OR title LIKE "%{search_query}%"
+            OR album LIKE "%{search_query}%"
+            OR albumartist LIKE "%{search_query}%"
+        """
+        self.update(q)
+        return
+
+    def cure_library_path(self, path):
+        """
+        File paths saved as bytes then saved as strings need to be sorted out.
+        """
+        if os.path.exists(path):
+            return path
+
+        try:
+            p = eval(path).decode()
+            if os.path.exists(p):
+                return p
+        except AttributeError:
+            pass
+
+        try:
+            p = path.decode()
+            if os.path.exists(p):
+                return p
+        except AttributeError:
+            pass
+        
+        raise "No viable file path!"
+
+    ### EVENT MANAGEMENT
+    def add_playlist_track_from_library(self, event):
+        path = self.track_info()['path']
+        path = self.cure_library_path(path)
+        if isinstance(path, bytes):
+            path = path.decode()
+        print(path)
+        if not self.playlist:
+            self.create_new_playlist()
+            self.playlist = self.playlist_library[-1]
         self.playlist.add_track(path)
-        self.populate_playlist_box()
+        self.populate_playlist_box(self.playlist)
 
-    def export_playlist(self, crate_name: str="new crate"):
-        if crate_name[-6:] != ".crate":
-            crate_name = crate_name + ".crate"
-        crate_path = os.path.join(serato_path, "Subcrates", crate_name)
-        n = 0
-        while os.path.isfile(crate_path):
-            crate_name = ''.join([crate_name[:-6], "_", str(n), ".crate"])
-            crate_path = os.path.join(serato_path, "Subcates", crate_name)
-            n += 1
+    def get_artists(self, event):
+        artists_selected = [f'"{self.artist_box.get(i)}"' for i in self.artist_box.curselection()]
+        self.update(f"""
+            SELECT {','.join(self.db_columns)}
+            FROM {self.db_table}
+            WHERE artist IN ({",".join(artists_selected)});
+            """)
 
-        print(crate_path)
-        self.playlist.encode_and_write(crate_path)
+    def get_playlist(self, event):
+        self.active_playlist_index = self.sidebar_box.curselection()[0]
+        self.playlist = self.playlist_library[self.active_playlist_index] # this is redundant
+        self.init_playlist(self.playlist)
+
+    ### PLAYLIST FUNCTIONS
+    def populate_playlist_box(self, crate: SeratoCrate):
+        self.playlist_box.delete(0, tk.END)
+        for t in crate.tracks:
+            self.playlist_box.insert(tk.END, t)
+
+    def rename_playlist(self):
+        name = simpledialog.askstring("Rename playlist", "Enter new playlist name")
+        self.playlist_library[self.active_playlist_index].crate_name = name
+        self.init_playlist(self.playlist_library[self.active_playlist_index])
+
+    def create_new_playlist(self):
+        name = simpledialog.askstring("New playlist", "Enter new playlist name")
+        new_playlist = SeratoCrate(name=name)
+        self.sidebar_box.insert(tk.END, name)
+        self.playlist_library.append(new_playlist)
+        self.sidebar_box.selection_clear(0, tk.END)
+        self.sidebar_box.selection_set(tk.END)
+        self.sidebar_box.activate(tk.END)
+        self.init_playlist(self.playlist_library[-1])
+        return
+
+    def export_playlist(self):
+        self.playlist.export_crate()
+        print(f"{self.playlist.crate_name} exported!")
+
+if __name__ == "__main__":
+    MusicDBGUI()

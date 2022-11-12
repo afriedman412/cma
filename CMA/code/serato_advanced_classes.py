@@ -1,9 +1,25 @@
 from .serato_basic_classes import SeratoStorage, SeratoObject, SeratoBaseClass
-from .exceptions import TrackPathException
+from .exceptions import *
 import os
 from mutagen.id3 import ID3
-from ..config.assets import serato_id3_import_table
+from ..config.assets import serato_id3_import_table, db_path, db_table, serato_path
 from typing import List, Union
+import sqlite3
+
+def cure_missing_file(path: str):
+    """
+    Quick stupid method for searching Beets for song info if mp3 cannot be found.
+    """
+    with sqlite3.connect(db_path) as conn:
+        q = f"""
+            SELECT *
+            FROM {db_table}
+            WHERE path == "{path}";
+            """
+        cur = conn.cursor()
+        cur.execute(q)
+        rows = cur.fetchall()
+    return rows
 
 class SeratoTrack(SeratoObject):
     """
@@ -16,7 +32,7 @@ class SeratoTrack(SeratoObject):
         self.set_song_info()
 
     def __repr__(self) -> str:
-        return ": ".join([self.song_artist, self.song_title])
+        return " - ".join([self.song_artist, self.song_title])
 
     def set_song_info(self):
         for k in ['tit2', 'tsng']:
@@ -34,27 +50,33 @@ class SeratoTrack(SeratoObject):
             if os.path.exists(path_):
                 return path_
         else:
-            raise TrackPathException(f"File not found: {path}")
+            rows = cure_missing_file(path)
+            print('NO SONG PATH FOUND!')
+            # print(rows)
+            # raise TrackPathException(f"File not found: {path}")
+            return
         
     def extract_song_data(self, path: str):
         """
         This assumes the file is an mp3!!
         """
         verified_path = self.verify_song_path(path)
-        i = ID3(verified_path)
+        if verified_path:
+            i = ID3(verified_path)
 
-        for id3_tag, serato_tag in serato_id3_import_table.items():
-            value = i.get(id3_tag)
-            if value:
-                try:
-                    o = SeratoObject(serato_tag, value.text[0])
-                    self.object_data.append(o)
-                except IndexError:
-                    continue
+            for id3_tag, serato_tag in serato_id3_import_table.items():
+                value = i.get(id3_tag)
+                if value:
+                    try:
+                        o = SeratoObject(serato_tag, value.text[0])
+                        self.object_data.append(o)
+                    except IndexError:
+                        continue
 
-        for path_key in ['ptrk', 'pfil']:
-            if path_key not in self.data_keys:
-                self.object_data.append(SeratoObject(path_key, verified_path))
+            for path_key in ['ptrk', 'pfil']:
+                if path_key not in self.data_keys:
+                    self.object_data.append(SeratoObject(path_key, verified_path))
+
 
 class SeratoCrate(SeratoStorage):
     def __init__(self, path: str=None, name: str="new_crate"):
@@ -88,9 +110,27 @@ class SeratoCrate(SeratoStorage):
         """
         Load info for tracks in crate.
         """
+        new_objects = []
         for o in self.objects:
-            if o.object_type == 'otrk':
-                o.extract_song_data()
+            if o.object_type == "otrk":
+                if not isinstance(o, SeratoTrack):
+                    o = SeratoTrack(o.get_data_by_tag('ptrk'))
+                o.extract_song_data(o.get_data_by_tag('pfil'))
+            new_objects.append(o)
+        self.objects = new_objects
+
+    def export_crate(self, output_path: str=None):
+        if not output_path:
+            if self.crate_name[-6:] != ".crate":
+                self.crate_name = self.crate_name + ".crate"
+            output_path = os.path.join(serato_path, "Subcrates", self.crate_name)
+
+        encoded_objects = [b"".join(list(o.encode_object())) for o in self.objects]
+
+        with open(output_path, "wb+") as f:
+            for o in encoded_objects:
+                f.write(o)
+        return
 
 class SeratoDB(SeratoBaseClass):
     def __init__(self, path: str=None):

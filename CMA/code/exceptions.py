@@ -6,3 +6,6 @@ class DecodingError(Exception):
 
 class TrackPathException(Exception):
     pass
+
+class LabelTypeError(Exception):
+    pass

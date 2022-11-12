@@ -1,8 +1,8 @@
-from ..config.assets import label_table, encoding_table, decoding_table
-from typing import Optional, Tuple, Union
+from ..config.assets import label_table, char_table
+from typing import Optional, Tuple, Union, List
 import mmap
 import struct
-from .exceptions import EncodingError
+from .exceptions import *
 
 verbose=False
 
@@ -17,7 +17,7 @@ class SeratoBaseClass:
             self.load_input(input)
 
     def __len__(self) -> int:
-        return len(self.raw_data)
+        return len(self.object_data)
 
     def load_input(self, input: Union[str, bytes]):
         """
@@ -51,8 +51,21 @@ class SeratoBaseClass:
     def peek_next_object(self) -> str:
         return self.peek(4).decode('utf-8')
 
+    def read_char_table(self, k: str, v: Union[str, int], keys: Union[str, list]):
+        if isinstance(keys, str):
+            keys = [keys]
+        try:
+            char_data = next(c for c in char_table if c[k]==v)
+            if len(keys) > 1:
+                return tuple([char_data[k_] for k_ in keys])
+            else:
+                return char_data[keys[0]]
+        except StopIteration:
+            return
+
     def load_next_header(self) -> Tuple[str, int]:
         object_type = self.read_bytes(4).decode('utf-8')
+        self.object_type = object_type
         given_len = struct.unpack(">I", self.read_bytes(4))[0]
         return object_type, given_len
 
@@ -65,6 +78,8 @@ class SeratoBaseClass:
         """
         object_type, given_len = self.load_next_header()
         dtype, label = self.get_type_info(object_type)
+        if not dtype:
+            raise LabelTypeError(f"No dtype found for object type {object_type} of length {given_len}")
         if verbose:
             print(object_type, given_len, self.object_data.tell(), dtype, label)
         decoded_data = self.decode_raw_data(given_len, dtype)
@@ -86,17 +101,26 @@ class SeratoBaseClass:
         """
         Decode bytes when yielding an object.
         """
-        if dtype == "s":
+        if given_len == 1 and self.peek(1) == b"\x00":
+            self.read_bytes(1)
+            decoded_data = None
+
+        elif dtype == "s":
             decoded_data = self.read_bytes(given_len).decode('utf-16be')
 
         elif dtype == "d":
             decoded_data = self.decode_compound_data(self.read_bytes(given_len))
                 
         else:
-            expected_len, unpack_code  = decoding_table[dtype]
-            assert given_len == expected_len, f"given len ({given_len}) doesn't match expected len ({expected_len}) at position {self.object_data.tell()}"
+            expected_len, struct_code  = self.read_char_table("dtype", dtype, ['expected_len', 'struct_code'])
 
-            decoded_data = struct.unpack(unpack_code, self.read_bytes(expected_len))[0]
+            if given_len != expected_len:
+                print(
+                    f"given len ({given_len}) doesn't match expected len ({expected_len}) at position {self.object_data.tell()} for object type {self.object_type}"
+                    )
+                struct_code = self.read_char_table("expected_len", given_len, "struct_code")
+
+            decoded_data = struct.unpack(struct_code, self.read_bytes(given_len))[0]
             
         return decoded_data
 
@@ -230,7 +254,8 @@ class SeratoObject(SeratoBaseClass):
 
         elif self.dtype[0] == "u":
             try:
-                encoded_data = struct.pack(encoding_table[self.dtype], int(self.object_data))
+                struct_code  = self.read_char_table("dtype", self.dtype, 'struct_code')
+                encoded_data = struct.pack(struct_code, 0 if not self.object_data else int(self.object_data))
             except:
                 raise EncodingError(f"encoding table expected integer for {self.object_type} ({self.dtype}), value {self.object_data}")
 

@@ -1,10 +1,36 @@
+verbose = True
+
 serato_path = "/Users/af412/Music/_Serato_"
+db_path = "/Users/af412/.config/beets/library.db"
+db_table ='items'
+db_columns = ['id', 'path', 'title', 'artist']
+
+char_table = [
+    {
+        "dtype": "u8",
+        "expected_len": 1,
+        "struct_code": ">B"
+    },
+    {
+        "dtype": "u16",
+        "expected_len": 2,
+        "struct_code": ">H"
+    },
+    {
+        "dtype": "u32",
+        "expected_len": 4,
+        "struct_code": ">I"
+    },
+
+]
 
 decoding_table = {"u32": (4, ">I"), "u16": (2, ">H"), "u8": (1, ">B")}
 encoding_table = {"u8": ">B", "u16": ">H", "u32": ">I"}
 
 label_table = {
         "otrk": ("d", "track"),
+        "osrt": ("d", "sorted_column"),
+        "ovct": ("d", "unsorted_column?"),
         "ptrk": ("s", "path"),  # Crate v1.0
         "pfil": ("s", "path"),  # DB v2.0
         "ttyp": ("s", "filetype"),
