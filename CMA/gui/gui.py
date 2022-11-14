@@ -39,9 +39,9 @@ class MusicDBGUI:
         self.root = TkinterDnD.Tk()
 
         self.root.rowconfigure(0, weight=0)
-        self.root.rowconfigure(1, weight=3, minsize=400)
+        self.root.rowconfigure(1, weight=3, minsize=350)
         self.root.rowconfigure(2, weight=0)
-        self.root.rowconfigure(3, weight=3, minsize=400)
+        self.root.rowconfigure(3, weight=3, minsize=350)
         self.root.rowconfigure(4, weight=3, minsize=25)
 
         self.root.columnconfigure(0, weight=2, minsize=300)
