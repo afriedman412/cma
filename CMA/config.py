@@ -8,7 +8,7 @@ default_username = getpass.getuser()
 config_path = "./cma_config.json"
 config = json.load(open(config_path)) if os.path.exists(config_path) else None
 for k, p in [
-    ('serato_path', f"/Users/{default_username}/Musix/_Serato_"), 
+    ('serato_path', f"/Users/{default_username}/Music/_Serato_"), 
     ('db_path', f"/Users/{default_username}/.config/beets/library.db")]:
     if config and k in config.keys():
         os.environ[k] = config[k]
@@ -31,13 +31,13 @@ for k, p in [
                     _ = input(
                         "Select a directory with some mp3s in it ... "
                     )
-                    new_music_dir = askdirectory(title=f'Select a Music Directory ...')
+                    new_music_dir = askdirectory(title=f'Select a Music Directory ...').replace(" ", "\ ")
                     if not os.path.exists(new_music_dir):
                         print('invalid path!')
                     else:
                         break
                 print("Building Beets database from path.")
-                exec(f"beet import -A {new_music_dir}")
+                os.system("beet import -A " + new_music_dir)
             db_path = f"/Users/{default_username}/.config/beets/library.db"
 
 

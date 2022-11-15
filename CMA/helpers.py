@@ -1,3 +1,5 @@
+from pydrive2.auth import GoogleAuth
+from pydrive2.drive import GoogleDrive
 import os
 from .config import serato_path, verbose, db_path
 from .serato_advanced_classes import SeratoCrate
@@ -20,6 +22,23 @@ def load_all_crates():
         except IndexError:
             continue
     return crates
+
+def upload_new_data(file_path):
+    settings = {
+                "client_config_backend": "service",
+                "service_config": {
+                    "client_json_file_path": "./nba-2019-2020-ef1bb619aade.json",
+                }
+            }
+
+    gauth = GoogleAuth(settings=settings)
+    gauth.ServiceAuth()
+    drive = GoogleDrive(gauth)
+
+    new_file = drive.CreateFile()
+    new_file = drive.SetContentFile(file_path)
+    new_file.upload()
+
 
 class DB:
     def __init__(self):
