@@ -14,7 +14,26 @@ for k, p in [
     elif os.path.exists(p):
         os.environ[k] = p
     else:
-        os.environ[k] = input(f'{k.replace("_", " ")} {p} doesn\'t exist, please enter the right one: ')
+        if k[0] == 's':
+            var = input(f'{k.replace("_", " ").title()} {p} doesn\'t exist, please enter the right one: ')
+            
+        else:
+            var = input(f'{k.replace("_", " ").title()} {p} doesn\'t exist, please enter the right one or leave blank to initialize Beets: ')
+            if var: 
+                os.environ[k] = var
+            else:
+                while True:
+                    beets_init_folder = input(
+                        "Enter a path with some mp3s in it: "
+                    )
+                    if not os.path.exists(beets_init_folder):
+                        print('invalid path!')
+                    else:
+                        break
+                print("Buildng Beets database from path.")
+                exec(f"beet import -A {beets_init_folder}")
+            db_path = f"/Users/{default_username}/.config/beets/library.db"
+
 
 serato_path = os.environ['serato_path']
 db_path = os.environ['db_path']
