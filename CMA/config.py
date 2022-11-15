@@ -1,6 +1,7 @@
 import os
 import json
 import getpass
+from tkinter.filedialog import askdirectory, askopenfilename
 
 
 default_username = getpass.getuser()
@@ -14,24 +15,28 @@ for k, p in [
     elif os.path.exists(p):
         os.environ[k] = p
     else:
+        k_ = {k.replace("_", " ").title()}
         if k[0] == 's':
-            var = input(f'{k.replace("_", " ").title()} {p} doesn\'t exist, please enter the right one: ')
+            var = input(f'Serato directory {p} doesn\'t exist!! Press enter to select the correct Serato directory ...')
+            new_selection = askdirectory(title=f'Select Serato Directory ...')
             
         else:
-            var = input(f'{k.replace("_", " ").title()} {p} doesn\'t exist, please enter the right one or leave blank to initialize Beets: ')
-            if var: 
+            var = input(f'No Beets Database found at {p}!! Press enter to find an existing Beets Database, or Space to initialize Beets ...')
+            if var != ' ': 
+                new_db = askopenfilename(title=f'Select Beets Database...')
                 os.environ[k] = var
             else:
                 while True:
-                    beets_init_folder = input(
-                        "Enter a path with some mp3s in it: "
+                    _ = input(
+                        "Select a directory with some mp3s in it ... "
                     )
-                    if not os.path.exists(beets_init_folder):
+                    new_music_dir = askdirectory(title=f'Select a Music Directory ...')
+                    if not os.path.exists(new_music_dir):
                         print('invalid path!')
                     else:
                         break
-                print("Buildng Beets database from path.")
-                exec(f"beet import -A {beets_init_folder}")
+                print("Building Beets database from path.")
+                exec(f"beet import -A {new_music_dir}")
             db_path = f"/Users/{default_username}/.config/beets/library.db"
 
 
