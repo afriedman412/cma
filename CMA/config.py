@@ -7,7 +7,7 @@ default_username = getpass.getuser()
 config_path = "./cma_config.json"
 config = json.load(open(config_path)) if os.path.exists(config_path) else None
 for k, p in [
-    ('serato_path', f"/Users/{default_username}/Musix/_Serato_"), 
+    ('serato_path', f"/Users/{default_username}/Music/_Serato_"), 
     ('db_path', f"/Users/{default_username}/.config/beets/library.db")]:
     if config and k in config.keys():
         os.environ[k] = config[k]
