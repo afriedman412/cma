@@ -1,8 +1,7 @@
 import os
-from ..config.assets import serato_path, verbose, db_path
+from .config import serato_path, verbose, db_path
 from .serato_advanced_classes import SeratoCrate
 import sqlite3
-import tkinter as tk
 
 def load_all_crates():
     global verbose

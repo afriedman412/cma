@@ -1,25 +1,25 @@
 from .serato_basic_classes import SeratoStorage, SeratoObject, SeratoBaseClass
-from .exceptions import *
 import os
 from mutagen.id3 import ID3
-from ..config.assets import serato_id3_import_table, db_path, db_table, serato_path
+from .assets import serato_id3_import_table, db_table
+from .config import db_path, serato_path
 from typing import List, Union
 import sqlite3
 
-def cure_missing_file(path: str):
-    """
-    Quick stupid method for searching Beets for song info if mp3 cannot be found.
-    """
-    with sqlite3.connect(db_path) as conn:
-        q = f"""
-            SELECT *
-            FROM {db_table}
-            WHERE path == "{path}";
-            """
-        cur = conn.cursor()
-        cur.execute(q)
-        rows = cur.fetchall()
-    return rows
+# def cure_missing_file(path: str):
+#     """
+#     Quick stupid method for searching Beets for song info if mp3 cannot be found.
+#     """
+#     with sqlite3.connect(db_path) as conn:
+#         q = f"""
+#             SELECT *
+#             FROM {db_table}
+#             WHERE path == "{path}";
+#             """
+#         cur = conn.cursor()
+#         cur.execute(q)
+#         rows = cur.fetchall()
+#     return rows
 
 class SeratoTrack(SeratoObject):
     """
@@ -50,7 +50,7 @@ class SeratoTrack(SeratoObject):
             if os.path.exists(path_):
                 return path_
         else:
-            rows = cure_missing_file(path)
+            # rows = cure_missing_file(path)
             print('NO SONG PATH FOUND!')
             # print(rows)
             # raise TrackPathException(f"File not found: {path}")

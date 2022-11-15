@@ -1,7 +1,3 @@
-verbose = True
-
-serato_path = "/Users/af412/Music/_Serato_"
-db_path = "/Users/af412/.config/beets/library.db"
 db_table ='items'
 db_columns = ['id', 'path', 'title', 'artist']
 

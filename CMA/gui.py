@@ -1,18 +1,16 @@
-# https://www.activestate.com/resources/quick-reads/how-to-display-data-in-a-table-using-tkinter/
-# https://stackoverflow.com/questions/57772458/how-to-get-a-treeview-columns-to-fit-the-frame-it-is-within
-# https://stackoverflow.com/questions/22262147/how-do-i-make-a-resizeable-window-with-a-sidepanel-and-content-area
-
 import tkinter as tk
 from tkinter import ttk, simpledialog
 from tkinterdnd2 import DND_FILES, DND_TEXT, TkinterDnD
 import os
+from .config import db_path, serato_path
 
-from ..code.serato_advanced_classes import SeratoCrate
-from ..code.helpers import load_all_crates, DB
-from ..config.assets import db_table, db_columns
+from .serato_advanced_classes import SeratoCrate
+from .helpers import load_all_crates, DB
+from .assets import db_table, db_columns
 
 class MusicDBGUI:
     def __init__(self, db_table=db_table, db_columns=db_columns):
+
         self.db_table = db_table
         if db_columns:
             self.db_columns = db_columns

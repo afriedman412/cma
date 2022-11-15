@@ -1,8 +1,8 @@
-from ..config.assets import label_table, char_table
-from typing import Optional, Tuple, Union, List
+from .assets import label_table, char_table
+from typing import Optional, Tuple, Union
 import mmap
 import struct
-from .exceptions import *
+from .exceptions import LabelTypeError, EncodingError
 
 verbose=False
 
