@@ -1,10 +1,11 @@
 from .serato_basic_classes import SeratoStorage, SeratoObject, SeratoBaseClass
 import os
-from mutagen.id3 import ID3
-from .assets import serato_id3_import_table, db_table
-from .config import db_path, serato_path
-from typing import List, Union
-import sqlite3
+from .assets import serato_id3_import_table, audio_typing_table
+from .config import serato_path
+from typing import List, Union, Optional
+import importlib
+from mimetypes import guess_type
+import mutagen
 
 # def cure_missing_file(path: str):
 #     """
@@ -24,10 +25,14 @@ import sqlite3
 class SeratoTrack(SeratoObject):
     """
     For importing a track from a file using ID3 tags, not bytes!
+
+    TODO: custom code for AAC/MP4 etc
     """
     #TODO: sort out crate track, importing with id3 and reading data!!!
     def __init__(self, path: str):
         super(SeratoTrack, self).__init__(object_type='otrk', object_data=[])
+        self.song_artist = "" # instantiate both with empty string
+        self.song_title = "" # instantiate both with empty string
         self.extract_song_data(path)
         self.set_song_info()
 
@@ -42,7 +47,7 @@ class SeratoTrack(SeratoObject):
         self.song_artist = self.get_data_by_tag('tart')
         return
 
-    def verify_song_path(self, path: str):
+    def verify_song_path(self, path: str) -> Optional[str]:
         """
         Tries variations on path formats.
         """
@@ -50,19 +55,25 @@ class SeratoTrack(SeratoObject):
             if os.path.exists(path_):
                 return path_
         else:
-            # rows = cure_missing_file(path)
             print('NO SONG PATH FOUND!')
-            # print(rows)
-            # raise TrackPathException(f"File not found: {path}")
             return
+
+    def parse_audio_type(self, path: str) -> mutagen.FileType:
+        self.file_type, _ = guess_type(path)
+        file_ext = audio_typing_table.get(self.file_type, None)
+
+        mutagen_parser = importlib.import_module(f"mutagen.{file_ext.lower()}")
+        parsed_file = getattr(mutagen_parser, file_ext)(path)
+        return parsed_file
+
         
     def extract_song_data(self, path: str):
         """
-        This assumes the file is an mp3!!
+        
         """
         verified_path = self.verify_song_path(path)
         if verified_path:
-            i = ID3(verified_path)
+            i = self.parse_audio_type(verified_path)
 
             for id3_tag, serato_tag in serato_id3_import_table.items():
                 value = i.get(id3_tag)

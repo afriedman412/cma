@@ -15,7 +15,6 @@ tkinterdnd2 = "^0.3.0"
 typing-extensions = "^4.4.0"
 pytest = "^7.2.0"
 pyinstaller = "^5.6.2"
-pydrive2 = "^1.15.0"
 
 [tool.poetry.dev-dependencies]
 

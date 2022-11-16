@@ -20,6 +20,21 @@ char_table = [
 
 ]
 
+audio_typing_table = {
+    "audio/x-wav": "WAVE",
+    "audio/wav": "WAVE",
+    "audio/aac": "AAC", 
+    "audio/mpeg": "MP3",
+    "audio/x-mpeg": "MP3",
+    'audio/x-aiff': "AIFF",
+    "audio/aiff": "AIFF",
+    "audio/aifc": "AIFF",
+    "audio/ogg": "OGG",
+    "audio/mp4": "MP4",
+    "audio/mp4a-latm": "MP4",
+    "audio/flac": "FLAC"
+}
+
 decoding_table = {"u32": (4, ">I"), "u16": (2, ">H"), "u8": (1, ">B")}
 encoding_table = {"u8": ">B", "u16": ">H", "u32": ">I"}
 

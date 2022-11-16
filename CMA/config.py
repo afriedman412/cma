@@ -2,47 +2,33 @@ import os
 import json
 import getpass
 from tkinter.filedialog import askdirectory, askopenfilename
+from tkinter.messagebox import askokcancel
 
 
 default_username = getpass.getuser()
+default_serato_path = f"/Users/{default_username}/Music/_Serato_"
+default_db_path = f"/Users/{default_username}/.config/beets/library.db"
+
 config_path = "./cma_config.json"
-config = json.load(open(config_path)) if os.path.exists(config_path) else None
-for k, p in [
-    ('serato_path', f"/Users/{default_username}/Music/_Serato_"), 
-    ('db_path', f"/Users/{default_username}/.config/beets/library.db")]:
-    if config and k in config.keys():
-        os.environ[k] = config[k]
-    elif os.path.exists(p):
-        os.environ[k] = p
+config = json.load(open(config_path)) if os.path.exists(config_path) else {}
+serato_path = config.get('serato_path', None)
+db_path = config.get('db_path', None)
+
+if not serato_path:
+    _ = askokcancel("Serato Directory", "Press OK to locate your Serato directory")
+    serato_path = askdirectory(initialdir=default_serato_path)
+
+if not db_path:
+    db_bool = askokcancel("Beets DB", "Press OK to locate your Beets database, or Cancel to select a folder of mp3s to initiate the database.")
+
+    if db_bool:
+        db_path = askopenfilename(initialdir=default_db_path)
     else:
-        k_ = {k.replace("_", " ").title()}
-        if k == 'serato_path':
-            var = input(f'Serato directory {p} doesn\'t exist!! Press enter to select the correct Serato directory ...')
-            new_serato_dir = askdirectory(title=f'Select Serato Directory ...')
-            os.environ['serato_path'] = new_serato_dir
-            
-        else:
-            var = input(f'No Beets Database found at {p}!! Press enter to find an existing Beets Database, or Space to initialize Beets ...')
-            if var != ' ': 
-                new_db = askopenfilename(title=f'Select Beets Database...')
-                os.environ[k] = var
-            else:
-                while True:
-                    _ = input(
-                        "Select a directory with some mp3s in it ... "
-                    )
-                    new_music_dir = askdirectory(title=f'Select a Music Directory ...').replace(" ", "\ ")
-                    if not os.path.exists(new_music_dir):
-                        print('invalid path!')
-                    else:
-                        break
-                print("Building Beets database from path.")
-                os.system("beet import -A " + new_music_dir)
-            db_path = f"/Users/{default_username}/.config/beets/library.db"
+        music_path = askdirectory(initialdir=os.getcwd())
+        print("Building Beets database from path.")
+        os.system("beet import -A " + music_path)
+        db_path = default_db_path
 
-
-serato_path = os.environ['serato_path']
-db_path = os.environ['db_path']
 json.dump({'serato_path': serato_path, 'db_path': db_path}, open(config_path, "w+"))
 
 verbose = True
