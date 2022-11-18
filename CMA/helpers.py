@@ -2,6 +2,20 @@ import os
 from .config import serato_path, verbose, db_path
 from .serato_advanced_classes import SeratoCrate
 import sqlite3
+import logging
+from datetime import datetime as dt
+
+def init_logger():
+    timestamp = dt.strftime(dt.now(), "%Y%m%d")
+    LOG_PATH = os.path.abspath(f"./cma_{timestamp}.log")
+    os.environ["LOG_PATH"] = LOG_PATH
+    print(timestamp)
+    return logging.basicConfig(
+        filename=LOG_PATH,
+        filemode="a+",
+        format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S',
+        level=logging.INFO
+        )
 
 def load_all_crates():
     global verbose

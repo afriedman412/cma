@@ -6,21 +6,10 @@ from typing import List, Union, Optional
 import importlib
 from mimetypes import guess_type
 import mutagen
+import logging
+import subprocess
 
-# def cure_missing_file(path: str):
-#     """
-#     Quick stupid method for searching Beets for song info if mp3 cannot be found.
-#     """
-#     with sqlite3.connect(db_path) as conn:
-#         q = f"""
-#             SELECT *
-#             FROM {db_table}
-#             WHERE path == "{path}";
-#             """
-#         cur = conn.cursor()
-#         cur.execute(q)
-#         rows = cur.fetchall()
-#     return rows
+
 
 class SeratoTrack(SeratoObject):
     """
@@ -35,6 +24,7 @@ class SeratoTrack(SeratoObject):
         self.song_title = "" # instantiate both with empty string
         self.extract_song_data(path)
         self.set_song_info()
+        logging.info(f"New SeratoTrack: {self.__repr__()}, {path}")
 
     def __repr__(self) -> str:
         return " - ".join([self.song_artist, self.song_title])
@@ -43,8 +33,10 @@ class SeratoTrack(SeratoObject):
         for k in ['tit2', 'tsng']:
             if k in self.data_keys:
                 self.song_title = self.get_data_by_tag(k)
+                logging.debug(f"setting song title: {k}, {self.song_title}")
 
         self.song_artist = self.get_data_by_tag('tart')
+        logging.debug(f"setting song artist: {self.song_artist}")
         return
 
     def verify_song_path(self, path: str) -> Optional[str]:
@@ -53,14 +45,16 @@ class SeratoTrack(SeratoObject):
         """
         for path_ in [path, "/" + path, os.path.abspath(path)]:
             if os.path.exists(path_):
+                logging.debug(f"Using {path_} as path for {path}")
                 return path_
         else:
-            print('NO SONG PATH FOUND!')
+            logging.warning(f"No usable path found for {path}")
             return
 
     def parse_audio_type(self, path: str) -> mutagen.FileType:
         self.file_type, _ = guess_type(path)
         file_ext = audio_typing_table.get(self.file_type, None)
+        logging.info(f"Guessed file type: {self.file_type}, using extension {file_ext}")
 
         mutagen_parser = importlib.import_module(f"mutagen.{file_ext.lower()}")
         parsed_file = getattr(mutagen_parser, file_ext)(path)
@@ -81,12 +75,15 @@ class SeratoTrack(SeratoObject):
                     try:
                         o = SeratoObject(serato_tag, value.text[0])
                         self.object_data.append(o)
+                        logging.debug(f"Adding SeratoObject for {id3_tag}")
                     except IndexError:
+                        logging.debug(f"No text found for tag {id3_tag}")
                         continue
 
             for path_key in ['ptrk', 'pfil']:
                 if path_key not in self.data_keys:
                     self.object_data.append(SeratoObject(path_key, verified_path))
+                    logging.debug(f"Setting {path_key} to {verified_path}")
 
 
 class SeratoCrate(SeratoStorage):
@@ -96,6 +93,7 @@ class SeratoCrate(SeratoStorage):
             vrsn=SeratoObject("vrsn", "1.0/Serato ScratchLive Crate")
             )
         self.crate_name = os.path.basename(path).replace(".crate", "") if path else name
+        logging.info(f"Loading Crate {self.crate_name} from {path}")
         return
 
     def __repr__(self):
@@ -109,8 +107,10 @@ class SeratoCrate(SeratoStorage):
         if isinstance(input, str):
             file_path = os.path.abspath(input)
             track_object = SeratoTrack(file_path)
+            logging.info(f"Adding {file_path} to {self.crate_name}")
         else:
             track_object = input
+            logging.info(f"Adding {track_object.__repr__()} to {self.crate_name}")
         self.objects.append(track_object)
 
     def add_tracks(self, inputs: List[str]):
@@ -135,7 +135,7 @@ class SeratoCrate(SeratoStorage):
             if self.crate_name[-6:] != ".crate":
                 self.crate_name = self.crate_name + ".crate"
             output_path = os.path.join(serato_path, "Subcrates", self.crate_name)
-
+        logging.info(f"Exporting crate {self.crate_name} to {output_path}")
         encoded_objects = [b"".join(list(o.encode_object())) for o in self.objects]
 
         with open(output_path, "wb+") as f:

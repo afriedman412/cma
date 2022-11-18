@@ -3,6 +3,7 @@ from typing import Optional, Tuple, Union
 import mmap
 import struct
 from .exceptions import LabelTypeError, EncodingError
+import logging
 
 verbose=False
 
@@ -13,6 +14,7 @@ class SeratoBaseClass:
     - loads data from a path if provided
     """
     def __init__(self, input: Union[str, bytes]):
+        logging.debug("initiating SeratoBaseClass")
         if input:
             self.load_input(input)
 
@@ -27,10 +29,12 @@ class SeratoBaseClass:
         TODO: fix this
         """
         if isinstance(input, str):
+            logging.debug(f"loading SeratoBaseClass input: {input}")
             with open(input, "r+b") as f:
                 self.object_data = mmap.mmap(f.fileno(), 0)
             
         elif isinstance(input, bytes):
+            logging.debug(f"loading SeratoBaseClass input: {len(input)} bytes")
             with open("temp", "w+b") as f:
                 f.write(input)
             with open("temp", "r+b") as f:
@@ -78,6 +82,9 @@ class SeratoBaseClass:
         """
         object_type, given_len = self.load_next_header()
         dtype, label = self.get_type_info(object_type)
+        logging.debug(
+            f"yielding SeratoBaseClass object: {object_type}, {given_len}, {dtype}, {label}"
+            )
         if not dtype:
             raise LabelTypeError(f"No dtype found for object type {object_type} of length {given_len}")
         if verbose:

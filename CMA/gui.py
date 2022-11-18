@@ -2,11 +2,12 @@ import tkinter as tk
 from tkinter import ttk, simpledialog
 from tkinterdnd2 import DND_FILES, DND_TEXT, TkinterDnD
 import os
-from .config import db_path, serato_path
-
 from .serato_advanced_classes import SeratoCrate
 from .helpers import load_all_crates, DB
 from .assets import db_table, db_columns
+from typing import Callable
+import logging
+import subprocess
 
 class MusicDBGUI:
     def __init__(self, db_table=db_table, db_columns=db_columns):
@@ -50,6 +51,7 @@ class MusicDBGUI:
         """
         Populates the sidebar with the playlist library.
         """
+        logging.debug("loading sidebar")
         self.sidebar_label = tk.Label(self.root, text="PLAYLIST LIBRARY", anchor="n")
         self.sidebar_label.grid(row=0, column=0, sticky="NS")
         
@@ -71,6 +73,7 @@ class MusicDBGUI:
         return  
 
     def init_library(self):
+        logging.debug("loading library")
         self.tree = ttk.Treeview(
             self.root, show="headings", columns=tuple(db_columns))
         self.tree.bind('<Double-Button-1>', self.add_playlist_track_from_library)
@@ -83,6 +86,7 @@ class MusicDBGUI:
         return track_info_dict
 
     def init_searchbar(self):
+        logging.debug("loading searchbar")
         self.search_frame = tk.Frame(self.root)
         self.search_label = tk.Label(self.search_frame, text="SEARCH:")
         self.search_label.pack(side="left", fill="x")
@@ -90,19 +94,35 @@ class MusicDBGUI:
         self.search_field = tk.Entry(self.search_frame)
         self.search_field.pack(side="left", fill="x")
 
-        self.search_button = tk.Button(
-            self.search_frame, 
-            text="Search",
-            command=self.search_db
-            )
-        self.search_button.pack(side="left", fill="x")
+        self.yield_button(self.search_frame, "Search", self.search_db)
+        self.yield_button(self.search_frame, "Load Log File", self.load_log)
+        self.yield_button(self.search_frame, "Break Shit", self.break_shit)
 
         self.search_frame.grid(row=0, column=1)
 
+    def load_log(self):
+        LOG_PATH = os.environ.get("LOG_PATH", None)
+        if LOG_PATH:
+            subprocess.run(["open",  LOG_PATH])
+        else:
+            logging.info("No log path set!")
+        return
+
+    def break_shit(self):
+        raise Exception("You broke shit!")
+
+    def yield_button(self, root, text: str, command: Callable):
+        """
+        For adding buttons to the search bar. 
+        """
+        button = tk.Button(root, text=text, command=command)
+        button.pack(side="left", fill="x")
+
     def init_playlist(self, playlist: SeratoCrate=None):
+        logging.debug("loading playlist window")
         self.playlist_label = tk.Label(
             self.root,
-            text=f"ACTIVE PLAYLIST: {playlist}", 
+            text=f"ACTIVE PLAYLIST: {playlist}" if playlist else f"NO ACTIVE PLAYLIST", 
             anchor="nw")
         self.playlist_label.grid(row=2, column=1, sticky="EW")
 
