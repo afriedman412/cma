@@ -1,44 +1,31 @@
 import os
-from .config import serato_path, verbose, db_path
 from .serato_advanced_classes import SeratoCrate
 import sqlite3
 import logging
-from datetime import datetime as dt
-
-def init_logger():
-    timestamp = dt.strftime(dt.now(), "%Y%m%d")
-    LOG_PATH = os.path.abspath(f"./cma_{timestamp}.log")
-    os.environ["LOG_PATH"] = LOG_PATH
-    print(timestamp)
-    return logging.basicConfig(
-        filename=LOG_PATH,
-        filemode="a+",
-        format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S',
-        level=logging.INFO
-        )
 
 def load_all_crates():
-    global verbose
     crates = []
-    crate_dir = os.path.join(serato_path, "Subcrates")
+    crate_dir = os.path.join(os.environ['SERATO_PATH'], "Subcrates")
+    logging.info(f"Crate directory: {crate_dir}")
     for c in os.listdir(crate_dir):
         try:
             if c[-6:] == ".crate":
                 print(c)
                 crate_path = os.path.join(crate_dir, c)
-                if verbose:
-                    print("****" + c.upper(), crate_path)
+                logging.info(f"loading crate {c.upper()} from {crate_path}")
+                print("****" + c.upper(), crate_path)
                 crate = SeratoCrate(crate_path)
                 crate.get_track_data()
                 crates.append(crate)
-        except IndexError:
+        except Exception as e:
+            logging.ERROR(f"crate loading error: {e.args}")
             continue
     return crates
 
 
 class DB:
     def __init__(self):
-        self._conn = sqlite3.connect(db_path)
+        self._conn = sqlite3.connect(os.environ['DB_PATH'])
         self._cursor = self._conn.cursor()
 
     def __enter__(self):

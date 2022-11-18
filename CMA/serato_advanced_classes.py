@@ -1,15 +1,11 @@
 from .serato_basic_classes import SeratoStorage, SeratoObject, SeratoBaseClass
 import os
 from .assets import serato_id3_import_table, audio_typing_table
-from .config import serato_path
 from typing import List, Union, Optional
 import importlib
 from mimetypes import guess_type
 import mutagen
 import logging
-import subprocess
-
-
 
 class SeratoTrack(SeratoObject):
     """
@@ -134,7 +130,7 @@ class SeratoCrate(SeratoStorage):
         if not output_path:
             if self.crate_name[-6:] != ".crate":
                 self.crate_name = self.crate_name + ".crate"
-            output_path = os.path.join(serato_path, "Subcrates", self.crate_name)
+            output_path = os.path.join(os.environ['SERATO_PATH'], "Subcrates", self.crate_name)
         logging.info(f"Exporting crate {self.crate_name} to {output_path}")
         encoded_objects = [b"".join(list(o.encode_object())) for o in self.objects]
 

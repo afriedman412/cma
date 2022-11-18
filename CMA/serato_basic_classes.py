@@ -14,7 +14,7 @@ class SeratoBaseClass:
     - loads data from a path if provided
     """
     def __init__(self, input: Union[str, bytes]):
-        logging.debug("initiating SeratoBaseClass")
+        # logging.debug("initiating SeratoBaseClass")
         if input:
             self.load_input(input)
 

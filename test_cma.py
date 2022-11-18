@@ -1,10 +1,17 @@
-from CMA.code.serato_advanced_classes import SeratoTrack, SeratoCrate
+from CMA.serato_advanced_classes import SeratoTrack, SeratoCrate
+from CMA.config import init_logger
+import logging
 import os
+
+init_logger()
+logging.debug(f"initiating tests...")
 
 serato_path = "/Users/af412/Music/_Serato_"
 file_path = "./CMA/assets/Dangerous Liasons (DVA Remix).mp3"
 db_path = os.path.join(serato_path, "database V2")
-crate_path = os.path.join(serato_path, "Subcrates", "Scaramanga- Seven Horns, Seven Eyes.crate")
+crate_path = os.path.join(serato_path, "Subcrates", "scaramanga.crate")
+
+
 
 # full track
 full_track = SeratoTrack(file_path)
@@ -28,8 +35,8 @@ def test_full_track():
 def test_existing_crate():
     crate_data_lens = [o.data_len for o in crate.objects]
     print(crate_data_lens)
-    assert sorted(crate_data_lens) == sorted([56, 192, 194, 200, 248, 194, 214, 174, 198, 186, 182, 238, 180, 184, 200, 202, 204, 470])
+    assert sorted(crate_data_lens) == sorted([56, 500, 492, 498, 438, 456, 450, 504, 554, 504, 444, 420, 474, 492, 508, 576, 558, 500, 426])
 
 def test_new_crate():
     assert new_crate.objects[0].data_len == 56
-    assert new_crate.objects[1].data_len == 588
+    assert new_crate.objects[1].data_len == 544

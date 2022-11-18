@@ -2,12 +2,12 @@ import tkinter as tk
 from tkinter import ttk, simpledialog
 from tkinterdnd2 import DND_FILES, DND_TEXT, TkinterDnD
 import os
+import logging
 from .serato_advanced_classes import SeratoCrate
 from .helpers import load_all_crates, DB
 from .assets import db_table, db_columns
 from typing import Callable
-import logging
-import subprocess
+from .config import load_log
 
 class MusicDBGUI:
     def __init__(self, db_table=db_table, db_columns=db_columns):
@@ -56,6 +56,7 @@ class MusicDBGUI:
         self.sidebar_label.grid(row=0, column=0, sticky="NS")
         
         self.playlist_library = load_all_crates()
+        logging.debug(f"crates loaded: {len(self.playlist_library)}")
         playlist_var = tk.Variable(value=self.playlist_library)
         self.sidebar_box = tk.Listbox(
             self.root,
@@ -95,18 +96,10 @@ class MusicDBGUI:
         self.search_field.pack(side="left", fill="x")
 
         self.yield_button(self.search_frame, "Search", self.search_db)
-        self.yield_button(self.search_frame, "Load Log File", self.load_log)
+        self.yield_button(self.search_frame, "Load Log File", load_log)
         self.yield_button(self.search_frame, "Break Shit", self.break_shit)
 
         self.search_frame.grid(row=0, column=1)
-
-    def load_log(self):
-        LOG_PATH = os.environ.get("LOG_PATH", None)
-        if LOG_PATH:
-            subprocess.run(["open",  LOG_PATH])
-        else:
-            logging.info("No log path set!")
-        return
 
     def break_shit(self):
         raise Exception("You broke shit!")
@@ -240,6 +233,7 @@ class MusicDBGUI:
 
     def create_new_playlist(self):
         name = simpledialog.askstring("New playlist", "Enter new playlist name")
+        logging.info(f"creating new playlist: {name}")
         new_playlist = SeratoCrate(name=name)
         self.sidebar_box.insert(tk.END, name)
         self.playlist_library.append(new_playlist)
@@ -252,6 +246,3 @@ class MusicDBGUI:
     def export_playlist(self):
         self.playlist.export_crate()
         print(f"{self.playlist.crate_name} exported!")
-
-if __name__ == "__main__":
-    MusicDBGUI()
