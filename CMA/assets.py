@@ -1,5 +1,5 @@
 db_table ='items'
-db_columns = ['id', 'path', 'title', 'artist']
+db_columns = ['id', 'title', 'artist', 'grouping', 'genre', 'path']
 
 char_table = [
     {
@@ -147,7 +147,8 @@ serato_id3_import_table = {
     'TDRL': 'ttyr',
     'TKEY': 'tkey',
     'TCOM': 'tcmp',
-    'TSIZ': 'tsiz'
+    'TSIZ': 'tsiz',
+    'GRP1': 'tgrp'
  }
 
 known_tags = list(serato_id3_import_table.keys()) + [

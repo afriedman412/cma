@@ -56,7 +56,6 @@ class SeratoTrack(SeratoObject):
         parsed_file = getattr(mutagen_parser, file_ext)(path)
         return parsed_file
 
-        
     def extract_song_data(self, path: str):
         """
         

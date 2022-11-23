@@ -20,7 +20,6 @@ def init_logger():
     timestamp = dt.strftime(dt.now(), "%Y%m%d")
     LOG_PATH = os.path.abspath(f"./cma_{timestamp}.log")
     os.environ["LOG_PATH"] = LOG_PATH
-    print(timestamp)
     return logging.basicConfig(
         filename=LOG_PATH,
         filemode="a+",
@@ -42,7 +41,6 @@ class Config:
         init_logger()
         load_log()
         os.environ['SERATO_PATH'], os.environ['DB_PATH'] = self.init_app()
-        logging.info(os.environ)
         return
 
     def init_app(self, config_path: str="./cma_config.json"):
@@ -75,7 +73,7 @@ class Config:
                 logging.info(f"setting Beets DB path: {db_path}")
             else:
                 logging.info("installing beets from command line")
-                subprocess.run(['pip', 'install', 'beets'])
+                subprocess.run(['pip3', 'install', 'beets'])
                 music_path = askdirectory(initialdir=os.getcwd())
                 logging.info(f"loading music files from {music_path}")
                 print("Building Beets database from path.")
