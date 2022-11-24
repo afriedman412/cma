@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter.filedialog import askopenfilename
 from pygame import mixer
 from pygame import error as pygame_error
-from typing import Callable
+from .gui_helpers import yield_button
 from .serato_advanced_classes import SeratoTrack
 import logging
 
@@ -11,14 +11,6 @@ class AudioPlayer:
         mixer.init()
         self.root=window
         self.init_window()
-        return
-
-    def yield_button(self, root, text: str, command: Callable):
-        """
-        For adding buttons to the search bar. 
-        """
-        button = tk.Button(root, text=text, command=command)
-        button.pack(side="left", fill="x")
         return
 
     def init_window(self):
@@ -39,7 +31,7 @@ class AudioPlayer:
             self.__getattribute__(button_name).pack(side="left", fill="x", padx=(5,5))
             self.__getattribute__(var_name).set(k.title())
 
-        self.yield_button(self.frame, "Load", self.load_song)
+        yield_button(self.frame, "Load", self.load_song)
 
         self.song_var = tk.StringVar()
         self.song_label = tk.Label(self.frame, textvariable=self.song_var, anchor="nw")

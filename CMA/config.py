@@ -24,7 +24,7 @@ def init_logger():
         filename=LOG_PATH,
         filemode="a+",
         format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S',
-        level=logging.DEBUG
+        level=logging.INFO
         )
 
 def load_log():

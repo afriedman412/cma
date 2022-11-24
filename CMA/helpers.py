@@ -12,7 +12,6 @@ def load_all_crates():
             if c[-6:] == ".crate":
                 print(c)
                 crate_path = os.path.join(crate_dir, c)
-                logging.info(f"loading crate {c.upper()} from {crate_path}")
                 print("****" + c.upper(), crate_path)
                 crate = SeratoCrate(crate_path)
                 crate.get_track_data()

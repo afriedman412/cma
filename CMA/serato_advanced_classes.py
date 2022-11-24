@@ -12,28 +12,35 @@ class SeratoTrack(SeratoObject):
     For importing a track from a file using ID3 tags, not bytes!
 
     TODO: custom code for AAC/MP4 etc
+    TODO: save changes
     """
     #TODO: sort out crate track, importing with id3 and reading data!!!
     def __init__(self, path: str):
         super(SeratoTrack, self).__init__(object_type='otrk', object_data=[])
-        self.song_artist = "" # instantiate both with empty string
-        self.song_title = "" # instantiate both with empty string
-        self.extract_song_data(path)
-        self.set_song_info()
+        self.update_song_data(path)
         logging.info(f"New SeratoTrack: {self.__repr__()}, {path}")
 
     def __repr__(self) -> str:
         return " - ".join([self.song_artist, self.song_title])
 
-    def set_song_info(self):
-        for k in ['tit2', 'tsng']:
-            if k in self.data_keys:
-                self.song_title = self.get_data_by_tag(k)
-                logging.debug(f"setting song title: {k}, {self.song_title}")
+    @property
+    def path(self) -> str:
+        """
+        File path from either of the two keys that might have it.
 
-        self.song_artist = self.get_data_by_tag('tart')
-        logging.debug(f"setting song artist: {self.song_artist}")
-        return
+        Don't know the difference between ptrk and pfil yet.
+        """
+        for k in ['ptrk', 'pfil']:
+            if k in self.data_keys:
+                return self[k]
+
+    @property
+    def song_title(self) -> str:
+        return self.multi_key(['tit2', 'tsng'])
+
+    @property
+    def song_artist(self) -> str:
+        return self.multi_key(['tart'])
 
     def verify_song_path(self, path: str) -> Optional[str]:
         """
@@ -56,9 +63,11 @@ class SeratoTrack(SeratoObject):
         parsed_file = getattr(mutagen_parser, file_ext)(path)
         return parsed_file
 
-    def extract_song_data(self, path: str):
+    def update_song_data(self, path: str):
         """
+        Extracts song info from songs in playlist.
         
+        (This needs to be done because Serato crates only store minimal info on their songs.)
         """
         verified_path = self.verify_song_path(path)
         if verified_path:
@@ -74,8 +83,8 @@ class SeratoTrack(SeratoObject):
                     except IndexError:
                         logging.debug(f"No text found for tag {id3_tag}")
                         continue
-
-            for path_key in ['ptrk', 'pfil']:
+            
+            for path_key in ['ptrk', 'pfil']: # cure path keys
                 if path_key not in self.data_keys:
                     self.object_data.append(SeratoObject(path_key, verified_path))
                     logging.debug(f"Setting {path_key} to {verified_path}")
@@ -112,6 +121,20 @@ class SeratoCrate(SeratoStorage):
         for i in inputs:
             self.add_track(i)
 
+    def delete_track(self, n: int):
+        """
+        Removes the nth track from the crate.
+
+        Technically removes object # n + "number of non-track objects"
+
+        (There should be only the "vrsn" object but this allows for variation.)
+        """
+        non_track_len = len([o for o in self.objects if o.object_type!='otrk'])
+        removed_track = self.objects.pop(n+non_track_len)
+        logging.info(f"Removed {removed_track} at {removed_track.path} from {self.crate_name}")
+        self.objects
+        return removed_track
+
     def get_track_data(self):
         """
         Load info for tracks in crate.
@@ -120,8 +143,8 @@ class SeratoCrate(SeratoStorage):
         for o in self.objects:
             if o.object_type == "otrk":
                 if not isinstance(o, SeratoTrack):
-                    o = SeratoTrack(o.get_data_by_tag('ptrk'))
-                o.extract_song_data(o.get_data_by_tag('pfil'))
+                    o = SeratoTrack(o['ptrk'])
+                o.update_song_data(o['pfil'])
             new_objects.append(o)
         self.objects = new_objects
 

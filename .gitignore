@@ -16,3 +16,7 @@ notebooks/*
 testo.py
 .vscode/*
 config.json
+*.log
+*.spec
+build/
+dist/
