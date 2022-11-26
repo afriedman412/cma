@@ -1,6 +1,7 @@
 from .serato_basic_classes import SeratoStorage, SeratoObject, SeratoBaseClass
 import os
 from .assets import serato_id3_import_table, audio_typing_table
+from .gui_helpers import cure_library_path
 from typing import List, Union, Optional
 import importlib
 from mimetypes import guess_type
@@ -25,14 +26,7 @@ class SeratoTrack(SeratoObject):
 
     @property
     def path(self) -> str:
-        """
-        File path from either of the two keys that might have it.
-
-        Don't know the difference between ptrk and pfil yet.
-        """
-        for k in ['ptrk', 'pfil']:
-            if k in self.data_keys:
-                return self[k]
+        return self.multi_key(['ptrk', 'pfil'])
 
     @property
     def song_title(self) -> str:
@@ -42,22 +36,10 @@ class SeratoTrack(SeratoObject):
     def song_artist(self) -> str:
         return self.multi_key(['tart'])
 
-    def verify_song_path(self, path: str) -> Optional[str]:
-        """
-        Tries variations on path formats.
-        """
-        for path_ in [path, "/" + path, os.path.abspath(path)]:
-            if os.path.exists(path_):
-                logging.debug(f"Using {path_} as path for {path}")
-                return path_
-        else:
-            logging.warning(f"No usable path found for {path}")
-            return
-
     def parse_audio_type(self, path: str) -> mutagen.FileType:
         self.file_type, _ = guess_type(path)
         file_ext = audio_typing_table.get(self.file_type, None)
-        logging.info(f"Guessed file type: {self.file_type}, using extension {file_ext}")
+        logging.debug(f"Guessed file type: {self.file_type}, using extension {file_ext}")
 
         mutagen_parser = importlib.import_module(f"mutagen.{file_ext.lower()}")
         parsed_file = getattr(mutagen_parser, file_ext)(path)
@@ -69,7 +51,7 @@ class SeratoTrack(SeratoObject):
         
         (This needs to be done because Serato crates only store minimal info on their songs.)
         """
-        verified_path = self.verify_song_path(path)
+        verified_path = cure_library_path(path)
         if verified_path:
             i = self.parse_audio_type(verified_path)
 
@@ -90,6 +72,7 @@ class SeratoTrack(SeratoObject):
                     logging.debug(f"Setting {path_key} to {verified_path}")
 
 
+
 class SeratoCrate(SeratoStorage):
     def __init__(self, path: str=None, name: str="new_crate"):
         super(SeratoCrate, self).__init__(
@@ -107,11 +90,10 @@ class SeratoCrate(SeratoStorage):
     def tracks(self):
         return [o for o in self.objects if o.object_type=='otrk']
 
-    def add_track(self, input: Union[str, SeratoTrack]):
-        if isinstance(input, str):
-            file_path = os.path.abspath(input)
-            track_object = SeratoTrack(file_path)
-            logging.info(f"Adding {file_path} to {self.crate_name}")
+    def add_track(self, input: Union[str, bytes, SeratoTrack]):
+        if not isinstance(input, SeratoCrate):
+            track_object = SeratoTrack(input)
+            logging.info(f"Adding {track_object} to {self.crate_name}")
         else:
             track_object = input
             logging.info(f"Adding {track_object.__repr__()} to {self.crate_name}")

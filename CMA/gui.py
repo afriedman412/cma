@@ -1,25 +1,25 @@
 import tkinter as tk
 from tkinter import ttk, simpledialog, messagebox
+from tkinter.filedialog import askdirectory
 from tkinterdnd2 import DND_FILES, DND_TEXT, TkinterDnD
 import logging
+import subprocess
 from .serato_advanced_classes import SeratoCrate
 from .audio_player import AudioPlayer
 from .helpers import load_all_crates, DB
 from .assets import db_table, db_columns
 from .config import load_log
 from .gui_helpers import yield_button, cure_library_path
+from .smart_playlist import SmartPlaylistMenu
 
 class MusicDBGUI:
     def __init__(self, db_table=db_table, db_columns=db_columns):
 
         self.root = TkinterDnD.Tk()
-
-        self.db_table = db_table
         if db_columns:
             self.db_columns = db_columns
-            
         else:
-            columns = self.db_query(f"PRAGMA table_info([{self.db_table}]);")
+            columns = self.db_query(f"PRAGMA table_info([{db_table}]);")
             self.db_columns =[c[1] for c in columns]
 
         self.active_playlist_index = None
@@ -31,8 +31,12 @@ class MusicDBGUI:
         self.init_playlist_buttons()
 
         # initate data
-        self.update(f"SELECT {','.join(self.db_columns)} FROM {self.db_table}")
+        self.update(self.q_header)
         self.root.mainloop()
+
+    @property
+    def q_header(self):
+        return f"SELECT {','.join(self.db_columns)} FROM {db_table}"
 
     @property
     def active_playlist(self) -> SeratoCrate:
@@ -54,7 +58,7 @@ class MusicDBGUI:
     def init_library(self):
         logging.debug("loading library")
         self.tree = ttk.Treeview(
-            self.root, show="headings", columns=tuple(db_columns), name="library")
+            self.root, show="headings", columns=tuple(self.db_columns), name="library")
         self.tree.bind('<Return>', self.add_playlist_track_from_library)
         self.tree.bind('<Double-Button-1>', self.play_song)
         self.tree.grid(row=1, column=1, padx=(5,10), sticky="NEWS")
@@ -90,10 +94,12 @@ class MusicDBGUI:
             self.playlist_label_frame,
             textvariable=self.playlist_title, 
             anchor="w")
-        self.playlist_label.pack(side="left")
+        self.playlist_label.pack(side="left", padx=30)
         yield_button(self.playlist_label_frame, "New Playlist", self.create_new_playlist)
         yield_button(self.playlist_label_frame, "Rename Playlist", self.rename_playlist)
         yield_button(self.playlist_label_frame, "Save Playlist", self.save_playlist)
+        self.audio_player = AudioPlayer(self.playlist_label_frame)
+        self.audio_player.frame.pack(side="left", padx=30)
         self.playlist_label_frame.grid(row=2, column=1, padx=(5,10), sticky="EW")
 
         self.playlist_box = tk.Listbox(self.root, name='playlist')
@@ -106,16 +112,17 @@ class MusicDBGUI:
     def init_searchbar(self):
         logging.debug("loading searchbar")
         self.search_frame = tk.Frame(self.root)
-        self.audio_player = AudioPlayer(self.search_frame)
-        self.audio_player.frame.pack(side="left")
         self.search_label = tk.Label(self.search_frame, text="SEARCH:")
         self.search_label.pack(side="left", fill="x")
 
         self.search_field = tk.Entry(self.search_frame)
         self.search_field.pack(side="left", fill="x")
+        self.search_field.bind("<Return>", self.search_db)
 
         yield_button(self.search_frame, "Search", self.search_db)
+        yield_button(self.search_frame, "Clear", self.clear_db_search)
         yield_button(self.search_frame, "Load Log File", load_log)
+        yield_button(self.search_frame, "Add to Library...", self.add_to_library)
 
         self.search_frame.grid(row=0, column=1)
 
@@ -123,6 +130,7 @@ class MusicDBGUI:
         self.playlist_button_frame = tk.Frame(self.root)
         yield_button(self.playlist_button_frame, "New Playlist", self.create_new_playlist)
         yield_button(self.playlist_button_frame, "Save Playlist", self.save_playlist)
+        yield_button(self.playlist_button_frame, "Smart Playlist...", self.create_smart_playlist)
         self.playlist_button_frame.grid(row=0, column=0)
 
     ### TREE/DB MANAGEMENT
@@ -130,40 +138,55 @@ class MusicDBGUI:
         with DB() as db:
             return db.query(q)
 
-    def update(self, q: str):
+    def update(self, q: str=None):
         if self.has_data:
             self.tree.delete(*self.tree.get_children())
-        
+        if not q:
+            q = self.q_header
+
         rows = self.db_query(q)
         for r in rows:
             self.tree.insert("", tk.END, values=r)
         
-        for n, c in enumerate(db_columns):
+        for n, c in enumerate(self.db_columns):
             self.tree.heading(c, text=c)
             if n == 0:
                 self.tree.column(c, width=50, stretch="NO")
             else:
                 self.tree.column(c)
-            
+    
+    @property
     def has_data(self):
         has_tree = self.tree.get_children()
         return True if has_tree else False
 
-    def search_db(self):
+    def clear_db_search(self):
+        logging.info("CLEARING SEARCH")
+        self.search_field.delete(0, tk.END)
+        self.update()
+        return
+
+    def search_db(self, event=None):
         search_query = self.search_field.get()
         q = f"""
-            SELECT *
-            FROM {db_table}
+            {self.q_header}
             WHERE path LIKE "%{search_query}%"
             OR artist LIKE "%{search_query}%"
             OR title LIKE "%{search_query}%"
             OR album LIKE "%{search_query}%"
             OR albumartist LIKE "%{search_query}%"
-        """
+            """
         self.update(q)
         return
 
     ### EVENT MANAGEMENT
+    def add_to_library(self):
+        dir_to_import = askdirectory()
+        self.root.update()
+        logging.info(f"loading music files from {dir_to_import}")
+        subprocess.run(['beet', 'import', '-A', dir_to_import])
+        return
+
     def add_playlist_track_from_library(self, event):
         song_path = self.get_library_song_path()
         if not self.active_playlist:
@@ -171,14 +194,17 @@ class MusicDBGUI:
             self.active_playlist = self.playlist_library[-1]
         self.active_playlist.add_track(song_path)
         self.update_playlist()
+        return
 
     def delete_track_from_playlist(self, event):
         self.active_playlist.delete_track(self.playlist_box.curselection()[0])
         self.update_playlist()
+        return
 
     def load_playlist(self, event):
         self.active_playlist_index = self.sidebar_box.curselection()[0]
         self.update_playlist()
+        return
 
     def play_song(self, event):
         if event.widget._name == "library":
@@ -187,7 +213,11 @@ class MusicDBGUI:
             selected_playlist_track = self.active_playlist.tracks[self.playlist_box.curselection()[0]]
             song_path = selected_playlist_track.path
 
-        self.audio_player.load_song(song_path)
+        if song_path:
+            self.audio_player.load_song(song_path)
+        else:
+            self.audio_player.song_var.set("FILE NOT FOUND!!!")
+        return
 
     ### PLAYLIST FUNCTIONS
     def update_playlist(self):
@@ -209,11 +239,20 @@ class MusicDBGUI:
         if not name:
             return
         logging.info(f"creating new playlist: {name}")
-        self.playlist_library.append(SeratoCrate(name=name))
-        self.active_playlist_index=-1
-        self.sidebar_box.insert(tk.END, name)
-        
+        new_playlist = SeratoCrate(name=name)
+        self.add_playlist_to_library(new_playlist)
+        return
 
+    def add_playlist_to_library(self, playlist: SeratoCrate):
+        """
+        Adds a playlist to the library sidebar and resets.
+
+        Separated from "create_new_playlist" so it can be reused for smart playlists.
+        """
+        self.playlist_library.append(playlist)
+        self.active_playlist_index=-1
+        self.sidebar_box.insert(tk.END, playlist.crate_name)
+    
         # this is just navigating to the end of the playlist library
         self.sidebar_box.selection_clear(0, tk.END)
         self.sidebar_box.selection_set(tk.END)
@@ -236,3 +275,10 @@ class MusicDBGUI:
         if isinstance(song_path, bytes):
             song_path = song_path.decode()
         return song_path
+
+    def create_smart_playlist(self):
+        smart_menu = SmartPlaylistMenu(tk.Toplevel(self.root), self.db_columns)
+        smart_menu.window.wait_window()
+        self.add_playlist_to_library(smart_menu.new_crate)
+        # self.save_playlist()
+        return

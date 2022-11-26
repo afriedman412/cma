@@ -216,7 +216,7 @@ class SeratoObject(SeratoBaseClass):
         return l if isinstance(l, int) else 0
 
     @property
-    def data_len(self):
+    def data_len(self) -> int:
         """
         TODO: Handle other data types.
         """
@@ -225,6 +225,9 @@ class SeratoObject(SeratoBaseClass):
                 return len(self.object_data)
             else:
                 return self.calculated_len
+
+        elif self.object_data == 0:
+            return 1
         else:
             return self.given_len
 

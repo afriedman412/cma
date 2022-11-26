@@ -81,7 +81,7 @@ class AudioPlayer:
     def load_song(self, song_path: str=None):
         if not song_path:
             song_path = askopenfilename()
-        new_track = SeratoTrack(path=song_path)
+        new_track = SeratoTrack(path=song_path) # TODO: probably bad to do this
         mixer.music.load(song_path)
         self.song_var.set(new_track)
         self.stop()
