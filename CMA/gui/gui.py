@@ -4,13 +4,15 @@ from tkinter.filedialog import askdirectory
 from tkinterdnd2 import DND_FILES, DND_TEXT, TkinterDnD
 import logging
 import subprocess
-from .serato_advanced_classes import SeratoCrate
+import regex as re
+from ..code.serato_advanced_classes import SeratoCrate, SeratoTrack
 from .audio_player import AudioPlayer
-from .helpers import load_all_crates, DB
-from .assets import db_table, db_columns
-from .config import load_log
+from ..code.helpers import load_all_crates, DB
+from ..assets.assets import db_table, db_columns
+from ..code.config import load_log
 from .gui_helpers import yield_button, cure_library_path
 from .smart_playlist import SmartPlaylistMenu
+from .track_info import TrackInfo
 
 class MusicDBGUI:
     def __init__(self, db_table=db_table, db_columns=db_columns):
@@ -32,7 +34,10 @@ class MusicDBGUI:
 
         # initate data
         self.update(self.q_header)
+        self.genres = self.get_genres()
+
         self.root.mainloop()
+        return
 
     @property
     def q_header(self):
@@ -61,6 +66,7 @@ class MusicDBGUI:
             self.root, show="headings", columns=tuple(self.db_columns), name="library")
         self.tree.bind('<Return>', self.add_playlist_track_from_library)
         self.tree.bind('<Double-Button-1>', self.play_song)
+        self.tree.bind('<i>', self.get_track_info)
         self.tree.grid(row=1, column=1, padx=(5,10), sticky="NEWS")
         return
 
@@ -108,6 +114,7 @@ class MusicDBGUI:
         self.playlist_box.dnd_bind('<<Drop>>', self.add_playlist_track_from_library)
         self.playlist_box.bind("<Double-Button-1>", self.play_song)
         self.playlist_box.bind("<BackSpace>", self.delete_track_from_playlist)
+        self.playlist_box.bind("<i>", self.get_track_info)
 
     def init_searchbar(self):
         logging.debug("loading searchbar")
@@ -179,6 +186,16 @@ class MusicDBGUI:
         self.update(q)
         return
 
+    def get_genres(self):
+        logging.info("Getting genres...")
+        rows = self.db_query(f"""SELECT grouping FROM {db_table} WHERE grouping IS NOT ''""")
+        genres = []
+        for r in rows:
+            r = re.sub(r"^\d\s", "", r[0])
+            genres += r.split("/")
+        logging.info("Done getting genres!")
+        return list(set(genres))
+
     ### EVENT MANAGEMENT
     def add_to_library(self):
         dir_to_import = askdirectory()
@@ -227,7 +244,8 @@ class MusicDBGUI:
         self.playlist_title.set(f"ACTIVE PLAYLIST: {self.active_playlist.crate_name}")
         self.playlist_box.delete(0, tk.END)
         for t in self.active_playlist.tracks:
-            self.playlist_box.insert(tk.END, t)
+            grouping = t['grouping']
+            self.playlist_box.insert(tk.END, "    //    ".join([repr(t), grouping]))
 
     def rename_playlist(self):
         name = simpledialog.askstring("Rename playlist", "Enter new playlist name")
@@ -277,8 +295,18 @@ class MusicDBGUI:
         return song_path
 
     def create_smart_playlist(self):
-        smart_menu = SmartPlaylistMenu(tk.Toplevel(self.root), self.db_columns)
+        smart_menu = SmartPlaylistMenu(tk.Toplevel(self.root), self.db_columns, self.genres)
         smart_menu.window.wait_window()
         self.add_playlist_to_library(smart_menu.new_crate)
-        # self.save_playlist()
+        self.save_playlist()
         return
+
+    def get_track_info(self, event):
+        if event.widget._name == "library":
+            song_path = self.get_library_song_path()
+            track = SeratoTrack(path=song_path)
+        elif event.widget._name == "playlist":
+            track = self.active_playlist.tracks[self.playlist_box.curselection()[0]]
+        
+        track_info = TrackInfo(tk.Toplevel(self.root), track)
+        track_info.window.wait_window()

@@ -3,7 +3,7 @@ from tkinter.filedialog import askopenfilename
 from pygame import mixer
 from pygame import error as pygame_error
 from .gui_helpers import yield_button
-from .serato_advanced_classes import SeratoTrack
+from ..code.serato_advanced_classes import SeratoTrack
 import logging
 
 class AudioPlayer:

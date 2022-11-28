@@ -1,12 +1,13 @@
 from .serato_basic_classes import SeratoStorage, SeratoObject, SeratoBaseClass
 import os
-from .assets import serato_id3_import_table, audio_typing_table
-from .gui_helpers import cure_library_path
+from ..assets.assets import serato_id3_import_table, audio_typing_table
+from ..gui.gui_helpers import cure_library_path
 from typing import List, Union, Optional
 import importlib
 from mimetypes import guess_type
 import mutagen
 import logging
+from mutagen.easyid3 import EasyID3
 
 class SeratoTrack(SeratoObject):
     """
@@ -35,6 +36,10 @@ class SeratoTrack(SeratoObject):
     @property
     def song_artist(self) -> str:
         return self.multi_key(['tart'])
+
+    @property
+    def id3_info(self) -> dict:
+        return EasyID3(self.path)
 
     def parse_audio_type(self, path: str) -> mutagen.FileType:
         self.file_type, _ = guess_type(path)

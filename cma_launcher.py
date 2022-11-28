@@ -1,6 +1,4 @@
-from CMA.config import Config
+from CMA import MusicDBGUI
 
-if __name__=="__main__":
-    config = Config()
-    from CMA.gui import MusicDBGUI
+if __name__=="__main__":    
     MusicDBGUI()

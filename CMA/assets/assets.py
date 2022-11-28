@@ -132,7 +132,8 @@ serato_db_col_dict = {
     'udsc': "disc_num", 
     'tcmp':"composer", 
     'utpc': 'utpc', 
-    'trmx': "remixer"
+    'trmx': "remixer",
+    'ptrk': "playlist_track_file_path"
 }
 
 serato_id3_import_table = {

@@ -1,18 +1,11 @@
-
+- readme --> new serato, disable gatekeeper, python install, add config.yaml
+- use beets code to access db data
 - fix bytes "path" column
+
 - column sizing
-- readme --> new serato, disable gatekeeper, python install
+
 - drag and drop to add to playlist
-
-- add grouping to metadata
-- double click to open file info
-
 - how to add full library
 - change metadata
-
-- track data as dict
-
 - "connections" metadata
 - clean button --> big toggle button
-
-- smart playlist that update by grouping and genre

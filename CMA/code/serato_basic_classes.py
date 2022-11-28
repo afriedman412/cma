@@ -1,4 +1,4 @@
-from .assets import label_table, char_table
+from ..assets.assets import label_table, char_table
 from typing import Optional, Tuple, Union, List
 import mmap
 import struct
