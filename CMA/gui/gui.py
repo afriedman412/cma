@@ -201,7 +201,7 @@ class MusicDBGUI:
         dir_to_import = askdirectory()
         self.root.update()
         logging.info(f"loading music files from {dir_to_import}")
-        subprocess.run(['beet', 'import', '-A', dir_to_import])
+        subprocess.run(['beet', 'import', '-A', '-C', dir_to_import])
         return
 
     def add_playlist_track_from_library(self, event):

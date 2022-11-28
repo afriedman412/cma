@@ -77,7 +77,7 @@ class Config:
                 music_path = askdirectory(initialdir=os.getcwd())
                 logging.info(f"loading music files from {music_path}")
                 print("Building Beets database from path.")
-                subprocess.run(['beet', 'import', '-A', music_path])
+                subprocess.run(['beet', 'import', '-A', '-C', music_path])
                 db_path = default_db_path
         logging.info(f"outputting config file to {config_path}")
         json.dump({'serato_path': serato_path, 'db_path': db_path}, open(config_path, "w+"))
