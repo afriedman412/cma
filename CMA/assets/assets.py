@@ -40,6 +40,7 @@ encoding_table = {"u8": ">B", "u16": ">H", "u32": ">I"}
 
 label_table = {
         "otrk": ("d", "track"),
+        "orvc": ("d", "???"),
         "osrt": ("d", "sorted_column"),
         "ovct": ("d", "unsorted_column?"),
         "ptrk": ("s", "path"),  # Crate v1.0

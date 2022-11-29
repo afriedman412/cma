@@ -11,8 +11,8 @@ from datetime import datetime as dt
 
 def log_exceptions(type, value, tb):
     for line in traceback.TracebackException(type, value, tb).format(chain=True):
-        logging.exception(line)
-    logging.exception(value)
+        logging.error(line)
+    logging.error(value)
 
     sys.__excepthook__(type, value, tb) # calls default excepthook
 
@@ -36,11 +36,14 @@ def load_log():
     return
 
 class Config:
+    """
+    
+    """
     def __init__(self):
         sys.excepthook = log_exceptions
         init_logger()
         load_log()
-        os.environ['SERATO_PATH'], os.environ['DB_PATH'] = self.init_app()
+        os.environ['SERATO_PATH'], os.environ['CRATES_PATH'], os.environ['DB_PATH'] = self.init_app()
         return
 
     def init_app(self, config_path: str="./cma_config.json"):
@@ -56,6 +59,7 @@ class Config:
             config = {}
 
         serato_path = config.get('serato_path', None)
+        crates_path = config.get('crates_path', None)
         db_path = config.get('db_path', None)
 
         if not serato_path:
@@ -63,6 +67,20 @@ class Config:
             _ = askokcancel("Serato Directory", "Press OK to locate your Serato directory")
             serato_path = askdirectory(initialdir=default_serato_path)
             logging.info(f"setting Serato Directory: {serato_path}")
+
+        if not crates_path:
+            logging.info("locating subcrates path")
+            crates_bool = askokcancel("Subcrates Directory", "Press OK to use default crate path or cancel to choose one.")
+            
+            if crates_bool:
+                crates_path = os.path.join(serato_path, "Subcrates")
+                if not os.path.exists(crates_path):
+                    os.mkdir(crates_path)
+
+            else:
+                crates_path = askdirectory(initialdir=serato_path)
+
+            logging.info(f"setting Crates Directory: {crates_path}")
 
         if not db_path:
             logging.info("locating Beets DB")
@@ -80,6 +98,6 @@ class Config:
                 subprocess.run(['beet', 'import', '-A', '-C', music_path])
                 db_path = default_db_path
         logging.info(f"outputting config file to {config_path}")
-        json.dump({'serato_path': serato_path, 'db_path': db_path}, open(config_path, "w+"))
-        return serato_path, db_path
+        json.dump({'serato_path': serato_path, 'crates_path': crates_path, 'db_path': db_path}, open(config_path, "w+"))
+        return serato_path, crates_path, db_path
 

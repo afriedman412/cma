@@ -13,3 +13,6 @@ class TrackPathException(Exception):
 
 class LabelTypeError(Exception):
     pass
+
+class LoadingError(Exception):
+    pass

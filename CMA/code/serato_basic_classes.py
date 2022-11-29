@@ -2,8 +2,9 @@ from ..assets.assets import label_table, char_table
 from typing import Optional, Tuple, Union, List
 import mmap
 import struct
-from .exceptions import LabelTypeError, EncodingError
+from .exceptions import LabelTypeError, EncodingError, LoadingError
 import logging
+from tqdm import tqdm
 
 verbose=False
 
@@ -14,7 +15,7 @@ class SeratoBaseClass:
     - loads data from a path if provided
     """
     def __init__(self, input: Union[str, bytes]):
-        # logging.debug("initiating SeratoBaseClass")
+        logging.debug("initiating SeratoBaseClass")
         if input:
             self.load_input(input)
 
@@ -29,12 +30,12 @@ class SeratoBaseClass:
         TODO: fix this
         """
         if isinstance(input, str):
-            # logging.debug(f"loading SeratoBaseClass input: {input}")
+            logging.debug(f"loading SeratoBaseClass input: {input}")
             with open(input, "r+b") as f:
                 self.object_data = mmap.mmap(f.fileno(), 0)
             
         elif isinstance(input, bytes):
-            # logging.debug(f"loading SeratoBaseClass input: {len(input)} bytes")
+            logging.debug(f"loading SeratoBaseClass input: {len(input)} bytes")
             with open("temp", "w+b") as f:
                 f.write(input)
             with open("temp", "r+b") as f:
@@ -92,14 +93,23 @@ class SeratoBaseClass:
 
     def full_decode(self):
         """
-        Replaces "yield all".
+        Returns a list of objects.
 
-        Returns a list of objects, which is wrong for now.
+        Use pbar for SeratoStorage objects only!
         """
         objects = []
         while self.object_data.tell() < self.object_data.size():
-            new_object = self.yield_object()
-            objects.append(new_object)
+            try:
+                new_object = self.yield_object()
+                objects.append(new_object)
+                logging.debug("  //  ".join(
+                    [
+                        new_object.object_type, 
+                        str(new_object.given_len)
+                    ]))
+            except LoadingError as e:
+                logging.error("loading error")
+                continue
         return objects
 
     def decode_raw_data(self, given_len: int, dtype: str) -> Union[str, int, bytes]:
@@ -308,15 +318,45 @@ class SeratoStorage(SeratoBaseClass):
         super(SeratoStorage, self).__init__(path)
         if path:
             self.yield_all()
-        else:
+        elif vrsn:
             self.objects = [vrsn]
+        else:
+            self.objects = []
         return
 
     def __len__(self) -> int:
-        return len(self.objects)
+        try:
+            return len(self.objects)
+        except AttributeError:
+            return len(self.object_data)
 
     def yield_all(self):
         self.objects = self.full_decode()
+
+    # def yield_all_pbar(self):
+    #     """
+    #     Returns a list of objects.
+
+    #     This is just full_decode with a pbar added.
+    #     """
+    #     objects = []
+    #     pbar = tqdm(total=len(self))
+    #     while self.object_data.tell() < self.object_data.size():
+    #         print(self.object_data.tell(), self.object_data.size())
+    #         try:
+    #             new_object = self.yield_object()
+    #             objects.append(new_object)
+    #             logging.debug("  //  ".join(
+    #                 [
+    #                     new_object.object_type, 
+    #                     str(new_object.given_len)
+    #                 ]))
+    #         except LoadingError as e:
+    #             logging.error("loading error")
+    #             continue
+    #         pbar.update(self.object_data.tell())
+    #     pbar.close()
+    #     self.objects = objects
 
 
 

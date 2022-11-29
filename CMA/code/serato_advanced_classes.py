@@ -139,7 +139,7 @@ class SeratoCrate(SeratoStorage):
         if not output_path:
             if self.crate_name[-6:] != ".crate":
                 self.crate_name = self.crate_name + ".crate"
-            output_path = os.path.join(os.environ['SERATO_PATH'], "Subcrates", self.crate_name)
+            output_path = os.path.join(os.environ['CRATES_PATH'], self.crate_name)
         logging.info(f"Exporting crate {self.crate_name} to {output_path}")
         encoded_objects = [b"".join(list(o.encode_object())) for o in self.objects]
 

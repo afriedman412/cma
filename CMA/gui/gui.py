@@ -13,10 +13,17 @@ from ..code.config import load_log
 from .gui_helpers import yield_button, cure_library_path
 from .smart_playlist import SmartPlaylistMenu
 from .track_info import TrackInfo
+from typing import List
 
 class MusicDBGUI:
-    def __init__(self, db_table=db_table, db_columns=db_columns):
+    """
+    Most of the GUI for CMA. Should probably be broken into smaller pieces.
+    db_table is the name of the table, db_columns is the 
 
+
+    - Drag and Drop doesn't work
+    """
+    def __init__(self, db_table: str=db_table, db_columns: List=db_columns):
         self.root = TkinterDnD.Tk()
         if db_columns:
             self.db_columns = db_columns

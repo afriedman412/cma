@@ -5,7 +5,7 @@ import logging
 
 def load_all_crates():
     crates = []
-    crate_dir = os.path.join(os.environ['SERATO_PATH'], "Subcrates")
+    crate_dir = os.environ['CRATES_PATH']
     logging.info(f"Crate directory: {crate_dir}")
     for c in os.listdir(crate_dir):
         try:
@@ -17,7 +17,8 @@ def load_all_crates():
                 crate.get_track_data()
                 crates.append(crate)
         except Exception as e:
-            logging.ERROR(f"crate loading error: {e.args}")
+            logging.error(f"crate {c} loading error: {e.args}")
+            # raise e
             continue
     return crates
 
