@@ -20,3 +20,5 @@ config.json
 *.spec
 build/
 dist/
+cma_config.json
+temp
