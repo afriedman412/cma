@@ -10,7 +10,7 @@ CMA is an app for DJ homework that lets you prep for gigs without the overhead o
 It uses [Beets](https://beets.io/) to keep track of everything (although most of your metadata is stored in the audio files themselves!) and its GUI is built in [Tkinter](https://docs.python.org/3/library/tkinter.html).
 
 ### Requirements
-Python ^3.8
+Python ^3.8<br>
 Beets OR a folder of a few random mp3s<a name="f"></a>
 
 ### The Basics (might not work)
