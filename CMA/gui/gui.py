@@ -1,19 +1,23 @@
 import tkinter as tk
-from tkinter import ttk, simpledialog, messagebox
+from tkinter import simpledialog, messagebox
 from tkinter.filedialog import askdirectory
 from tkinterdnd2 import DND_FILES, DND_TEXT, TkinterDnD
 import logging
 import subprocess
+from typing import List
 import regex as re
+import os
+
 from ..code.serato_advanced_classes import SeratoCrate, SeratoTrack
 from .audio_player import AudioPlayer
-from ..code.helpers import load_all_crates, DB
+from ..code.helpers import load_crates, DB
 from ..assets.assets import db_table, db_columns
 from ..code.config import load_log
 from .gui_helpers import yield_button, cure_library_path
 from .smart_playlist import SmartPlaylistMenu
+from .settings_window import SettingsWindow
+from .library_frame import LibraryFrame
 from .track_info import TrackInfo
-from typing import List
 
 class MusicDBGUI:
     """
@@ -26,12 +30,13 @@ class MusicDBGUI:
     def __init__(self, db_table: str=db_table, db_columns: List=db_columns):
         self.root = TkinterDnD.Tk()
         if db_columns:
-            self.db_columns = db_columns
+            self.db_columns = tuple(db_columns)
         else:
             columns = self.db_query(f"PRAGMA table_info([{db_table}]);")
-            self.db_columns =[c[1] for c in columns]
+            self.db_columns =tuple([c[1] for c in columns])
 
-        self.active_playlist_index = None
+        print(self.db_columns)
+        self.active_playlist_index = 0
         self.init_grid()
         self.init_playlist_library()
         self.init_library()
@@ -43,12 +48,19 @@ class MusicDBGUI:
         self.update(self.q_header)
         self.genres = self.get_genres()
 
+        self.root.bind("<Command-r>", self.refresh)
         self.root.mainloop()
         return
 
+    def refresh(self, event):
+        print("RELOADING...")
+        logging.info("RELOADING")
+        self.root.destroy()
+        self.__init__()
+
     @property
     def q_header(self):
-        return f"SELECT {','.join(self.db_columns)} FROM {db_table}"
+        return f"SELECT {','.join(list(self.db_columns))} FROM {db_table}"
 
     @property
     def active_playlist(self) -> SeratoCrate:
@@ -68,13 +80,11 @@ class MusicDBGUI:
         return
 
     def init_library(self):
-        logging.debug("loading library")
-        self.tree = ttk.Treeview(
-            self.root, show="headings", columns=tuple(self.db_columns), name="library")
+        self.tree = LibraryFrame(self.root, self.db_columns).tree
+        self.tree.grid(row=1, column=1, padx=(5,10), sticky="NEWS")
         self.tree.bind('<Return>', self.add_playlist_track_from_library)
         self.tree.bind('<Double-Button-1>', self.play_song)
         self.tree.bind('<i>', self.get_track_info)
-        self.tree.grid(row=1, column=1, padx=(5,10), sticky="NEWS")
         return
 
     def init_playlist_library(self):
@@ -85,9 +95,9 @@ class MusicDBGUI:
         self.sidebar_label = tk.Label(self.root, text="PLAYLIST LIBRARY", anchor="center")
         self.sidebar_label.grid(row=0, column=0, sticky="NS")
         
-        self.playlist_library = load_all_crates()
+        self.playlist_library_var = tk.Variable()
+        self.reload_playlists()
         logging.debug(f"crates loaded: {len(self.playlist_library)}")
-        self.playlist_library_var = tk.Variable(value=self.playlist_library)
         self.sidebar_box = tk.Listbox(
             self.root,
             listvariable=self.playlist_library_var,
@@ -111,6 +121,7 @@ class MusicDBGUI:
         yield_button(self.playlist_label_frame, "New Playlist", self.create_new_playlist)
         yield_button(self.playlist_label_frame, "Rename Playlist", self.rename_playlist)
         yield_button(self.playlist_label_frame, "Save Playlist", self.save_playlist)
+        yield_button(self.playlist_label_frame, "Settings", self.load_settings)
         self.audio_player = AudioPlayer(self.playlist_label_frame)
         self.audio_player.frame.pack(side="left", padx=30)
         self.playlist_label_frame.grid(row=2, column=1, padx=(5,10), sticky="EW")
@@ -142,12 +153,13 @@ class MusicDBGUI:
 
     def init_playlist_buttons(self):
         self.playlist_button_frame = tk.Frame(self.root)
+        yield_button(self.playlist_button_frame, "Reload PL", self.reload_playlists)
         yield_button(self.playlist_button_frame, "New Playlist", self.create_new_playlist)
         yield_button(self.playlist_button_frame, "Save Playlist", self.save_playlist)
         yield_button(self.playlist_button_frame, "Smart Playlist...", self.create_smart_playlist)
         self.playlist_button_frame.grid(row=0, column=0)
 
-    ### TREE/DB MANAGEMENT
+    ## TREE/DB MANAGEMENT
     def db_query(self, q):
         with DB() as db:
             return db.query(q)
@@ -168,6 +180,7 @@ class MusicDBGUI:
                 self.tree.column(c, width=50, stretch="NO")
             else:
                 self.tree.column(c)
+        return
     
     @property
     def has_data(self):
@@ -189,6 +202,7 @@ class MusicDBGUI:
             OR title LIKE "%{search_query}%"
             OR album LIKE "%{search_query}%"
             OR albumartist LIKE "%{search_query}%"
+            LIMIT 10
             """
         self.update(q)
         return
@@ -201,7 +215,7 @@ class MusicDBGUI:
             r = re.sub(r"^\d\s", "", r[0])
             genres += r.split("/")
         logging.info("Done getting genres!")
-        return list(set(genres))
+        return sorted(list(set(genres)))
 
     ### EVENT MANAGEMENT
     def add_to_library(self):
@@ -230,6 +244,11 @@ class MusicDBGUI:
         self.update_playlist()
         return
 
+    def load_settings(self):
+        settings_window = SettingsWindow(tk.Toplevel(self.root))
+        settings_window.window.wait_window()
+        return
+
     def play_song(self, event):
         if event.widget._name == "library":
             song_path = self.get_library_song_path()
@@ -242,6 +261,15 @@ class MusicDBGUI:
         else:
             self.audio_player.song_var.set("FILE NOT FOUND!!!")
         return
+
+    def reload_playlists(self):
+        """
+        Moving out of init_playlist_library cuz there's a button for it.
+        """
+        self.playlist_library = load_crates()
+        self.playlist_library_var.set(self.playlist_library)
+        return
+
 
     ### PLAYLIST FUNCTIONS
     def update_playlist(self):
@@ -274,6 +302,8 @@ class MusicDBGUI:
 
         Separated from "create_new_playlist" so it can be reused for smart playlists.
         """
+        if not playlist:
+            playlist = SeratoCrate()
         self.playlist_library.append(playlist)
         self.active_playlist_index=-1
         self.sidebar_box.insert(tk.END, playlist.crate_name)

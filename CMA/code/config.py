@@ -43,10 +43,13 @@ class Config:
         sys.excepthook = log_exceptions
         init_logger()
         load_log()
-        os.environ['SERATO_PATH'], os.environ['CRATES_PATH'], os.environ['DB_PATH'] = self.init_app()
+        vars = self.init_app()
+        for k,v in zip(['SERATO_PATH', 'CRATES_PATH', 'DB_PATH', 'CRATE_AUTOLOAD', 'CONFIG_PATH'], vars):
+            print(k,v)
+            os.environ[k] = v
         return
 
-    def init_app(self, config_path: str="./cma_config.json"):
+    def init_app(self, config_path: str="/Users/af412/cma_config.json"):
         logging.info("initializing app...")
         default_username = getpass.getuser()
         default_serato_path = f"/Users/{default_username}/Music/_Serato_"
@@ -61,6 +64,7 @@ class Config:
         serato_path = config.get('serato_path', None)
         crates_path = config.get('crates_path', None)
         db_path = config.get('db_path', None)
+        crate_autoload = config.get('crate_autoload', None)
 
         if not serato_path:
             logging.info("locating Serato Directory")
@@ -98,6 +102,12 @@ class Config:
                 subprocess.run(['beet', 'import', '-A', '-C', music_path])
                 db_path = default_db_path
         logging.info(f"outputting config file to {config_path}")
-        json.dump({'serato_path': serato_path, 'crates_path': crates_path, 'db_path': db_path}, open(config_path, "w+"))
-        return serato_path, crates_path, db_path
+        json.dump(
+            {'serato_path': serato_path, 
+            'crates_path': crates_path, 
+            'db_path': db_path,
+            'config_path': '~/cma_config.json',
+            'crate_autoload': crate_autoload
+            }, open(config_path, "w+"))
+        return serato_path, crates_path, db_path, crate_autoload, config_path
 

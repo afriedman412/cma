@@ -20,6 +20,12 @@ char_table = [
 
 ]
 
+autoload_key = {
+    "Load All Crates": None, 
+    "Ignore Large Crates": 1000000, 
+    "Ignore All Crates": -1
+}
+
 audio_typing_table = {
     "audio/x-wav": "WAVE",
     "audio/wav": "WAVE",

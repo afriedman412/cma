@@ -1,21 +1,29 @@
 import os
 from .serato_advanced_classes import SeratoCrate
+from ..assets.assets import autoload_key
 import sqlite3
+from typing import List, Union
 import logging
 
-def load_all_crates():
+def load_crates() -> List[SeratoCrate]:
     crates = []
     crate_dir = os.environ['CRATES_PATH']
+    max_size = autoload_key[os.environ['CRATE_AUTOLOAD']]
     logging.info(f"Crate directory: {crate_dir}")
     for c in os.listdir(crate_dir):
         try:
             if c[-6:] == ".crate":
                 print(c)
                 crate_path = os.path.join(crate_dir, c)
+                crate_size = os.path.getsize(crate_path)
                 print("****" + c.upper(), crate_path)
-                crate = SeratoCrate(crate_path)
-                crate.get_track_data()
-                crates.append(crate)
+                if max_size is None or crate_size < max_size:
+                    crate = SeratoCrate(crate_path)
+                    crate.get_track_data()
+                    crates.append(crate)
+                else:
+                    print(f"Ignoring crate: {c} of size {crate_size}")
+                    logging.info(f"Ignoring crate: {c} of size {crate_size}")
         except Exception as e:
             logging.error(f"crate {c} loading error: {e.args}")
             # raise e
