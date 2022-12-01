@@ -2,7 +2,7 @@ import tkinter as tk
 from .gui_helpers import cure_library_path
 from ..code.serato_advanced_classes import SeratoCrate
 from ..code.helpers import DB
-from ..assets.assets import db_table
+from ..assets.assets import db_table, select_genres
 from typing import List
 import logging
 
@@ -28,12 +28,10 @@ class SmartPlaylistMenu:
         """
         Creates the grid.
         """
-        self.window.rowconfigure(0, minsize=40) # name playlist
-        self.window.rowconfigure(1, minsize=30) # include label
-        self.window.rowconfigure(2, minsize=150) # include listboxes
-        self.window.rowconfigure(3, minsize=30) # exclude label
-        self.window.rowconfigure(4, minsize=150) # exclude listboxes
-        self.window.rowconfigure(5, minsize=40) # export button
+        self.window.rowconfigure(0, minsize=50) # name playlist
+        self.window.rowconfigure(1, minsize=150) # includes listboxes
+        self.window.rowconfigure(2, minsize=150) # excludes
+        self.window.rowconfigure(3, minsize=40) # buttons
 
         self.window.columnconfigure(0, minsize=250)
         self.window.columnconfigure(1, minsize=250)
@@ -60,40 +58,65 @@ class SmartPlaylistMenu:
                 exportselection=0
                 ))
         return
-        
+
+    def yield_frame(self, k: str): # k is include or exclude
+        frame = f"{k}_frame"
+        self.__setattr__(frame,  tk.Frame(self.window))
+        tk.Label(
+            self.__getattribute__(frame), 
+            text=f"{k.upper()}...", 
+            font=("Arial Bold", 14)).pack(anchor="nw", padx=15, pady=(15, 2))
+
+        for label, var in zip(
+                ["energy", "all_genre","sel_genre"],
+                [[r for r in range(1,4)], self.genres, select_genres]
+            ):
+            self.yield_listbox("_".join([label, k]), self.__getattribute__(frame), var)
+            self.__getattribute__(f"{label}_{k}_listbox").pack(side="left", fill="x", padx=15, pady=15)
+        return 
+
+    def get_selections(self, k: str):
+        energies = [
+            self.__getattribute__(f"energy_{k}_var").get()[n] \
+                for n in self.__getattribute__(f"energy_{k}_listbox").curselection()
+                ]
+
+        all_genres = [
+            self.__getattribute__(f"all_genre_{k}_var").get()[n] \
+                for n in self.__getattribute__(f"all_genre_{k}_listbox").curselection()
+            ]
+
+        sel_genres = [
+            self.__getattribute__(f"sel_genre_{k}_var").get()[n] \
+                for n in self.__getattribute__(f"sel_genre_{k}_listbox").curselection()
+            ]
+        return energies, all_genres+sel_genres
 
     def init_frames(self):
         """
         Puts the frames in the grid.
-
-        Realized kinda late I can grid (most?) widgets individually so they don't need enclosing frames, but wtv.
         """
 
         # name frame
         self.name_frame = tk.Frame(self.window)
-        self.name_label = tk.Label(self.name_frame, text="Playlist name:")
-        self.name_label.pack(side="left", fill="x")
-        self.name_field = tk.Entry(self.name_frame)
+        self.name_label = tk.Label(self.name_frame, text="Playlist name:", font=("Arial Bold", 18))
+        self.name_label.pack(side="left", fill="x", padx=(15,0))
+
+        self.name_var = tk.StringVar(self.name_frame, "New Playlist")
+        self.name_field = tk.Entry(self.name_frame, textvariable=self.name_var)
         self.name_field.pack(side="left", fill="x")
         self.name_frame.grid(row=0, column=0, columnspan=2)
 
         # includes
-        tk.Label(self.window, text="INCLUDE...").grid(row=1, column=0, columnspan=2)
-        self.yield_listbox("energy_inc", self.window, [r for r in range(1,4)])
-        self.energy_inc_listbox.grid(row=2, column=0)
-        self.yield_listbox("genre_inc", self.window, self.genres)
-        self.genre_inc_listbox.grid(row=2, column=1)
+        self.yield_frame("include")
+        self.yield_frame("exclude")
 
-        # excludes
-        tk.Label(self.window, text="EXCLUDE...").grid(row=3, column=0, columnspan=2)
-        self.yield_listbox("energy_ex", self.window, [r for r in range(1,4)])
-        self.energy_ex_listbox.grid(row=4, column=0)
-        self.yield_listbox("genre_ex", self.window, self.genres)
-        self.genre_ex_listbox.grid(row=4, column=1)
+        self.include_frame.grid(row=1, column=0, columnspan=2)
+        self.exclude_frame.grid(row=2, column=0, columnspan=2)
 
         # enter
         self.enter_button = tk.Button(self.window, text="Create Playlist", command=self.make_crate_from_menu)
-        self.enter_button.grid(row=5, column=0, columnspan=2)
+        self.enter_button.grid(row=3, column=0, columnspan=2)
         return
 
     def get_playlist_tracks(self):
@@ -104,8 +127,7 @@ class SmartPlaylistMenu:
         """
         q_commands = []
         
-        include_energies = [self.energy_inc_var.get()[n] for n in self.energy_inc_listbox.curselection()]
-        include_genres = [self.genre_inc_var.get()[n] for n in self.genre_inc_listbox.curselection()]
+        include_energies, include_genres = self.get_selections("include")
         
         for e in include_energies:
             q_commands.append(f"grouping LIKE '{e} %'")
@@ -114,8 +136,7 @@ class SmartPlaylistMenu:
             g = g.replace("'", "\\'").replace('"', '\\"')
             q_commands.append(f"grouping LIKE '%{g}%'")
 
-        exclude_energies = [self.energy_ex_var.get()[n] for n in self.energy_ex_listbox.curselection()]
-        exclude_genres = [self.genre_ex_var.get()[n] for n in self.genre_ex_listbox.curselection()]
+        exclude_energies, exclude_genres = self.get_selections("exclude")
         
         for e in exclude_energies:
             q_commands.append(f"grouping NOT LIKE '{e} %'")
@@ -133,12 +154,13 @@ class SmartPlaylistMenu:
         return tracks
 
     def make_crate_from_menu(self):
-        self.new_crate = SeratoCrate(name=self.name_field.get())
         tracks = self.get_playlist_tracks()
-        for t in tracks:
-            verified_path = cure_library_path(t['path'])
-            if verified_path:
-                self.new_crate.add_track(verified_path)
+        if tracks:
+            self.new_crate = SeratoCrate(name=self.name_field.get())
+            for t in tracks:
+                verified_path = cure_library_path(t['path'])
+                if verified_path:
+                    self.new_crate.add_track(verified_path)
         self.window.destroy()
         return
 

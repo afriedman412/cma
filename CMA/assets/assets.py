@@ -20,6 +20,19 @@ char_table = [
 
 ]
 
+select_genres = [
+    'r&b',
+    'soul',
+    'funk',
+    'disco',
+    'classic',
+    'hip-hop',
+    'rock',
+    'electronic',
+    'pop',
+    'reggae'
+    ]
+
 autoload_key = {
     "Load All Crates": None, 
     "Ignore Large Crates": 1000000, 

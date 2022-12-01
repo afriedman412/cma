@@ -64,7 +64,10 @@ class MusicDBGUI:
 
     @property
     def active_playlist(self) -> SeratoCrate:
-        return self.playlist_library[self.active_playlist_index]
+        try:
+            return self.playlist_library[self.active_playlist_index]
+        except IndexError:
+            return None
 
     ### GRID FUNCTIONS
     def init_grid(self):
@@ -334,8 +337,10 @@ class MusicDBGUI:
     def create_smart_playlist(self):
         smart_menu = SmartPlaylistMenu(tk.Toplevel(self.root), self.db_columns, self.genres)
         smart_menu.window.wait_window()
-        self.add_playlist_to_library(smart_menu.new_crate)
-        self.save_playlist()
+        if smart_menu.new_crate:
+            logging.info(f"Adding new smart crate {smart_menu.new_crate.crate_name}")
+            self.add_playlist_to_library(smart_menu.new_crate)
+            self.save_playlist()
         return
 
     def get_track_info(self, event):
