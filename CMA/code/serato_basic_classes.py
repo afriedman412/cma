@@ -194,11 +194,20 @@ class SeratoObject(SeratoBaseClass):
     def __len__(self):
         return self.object_len
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: Union[str, List]) -> Union[int, str]:
         try:
             return [d.object_data for d in self.object_data if d.object_type==key][0]
         except (IndexError, TypeError):
-            return "(NO DATA)" 
+            return "_"
+
+    def mget(self, keys: List, return_dict: bool=False) -> Union[List, dict]:
+        """
+        Gets a list of keys. 
+        """
+        if not return_dict:
+            return [self[k] for k in keys]
+        else:
+            return dict(zip(keys, [self[k] for k in keys]))
 
     def __repr__(self):
         return f"(type: {self.object_type} // len: {self.data_len} // data: {self.object_data})"
@@ -241,7 +250,7 @@ class SeratoObject(SeratoBaseClass):
         else:
             return self.given_len
 
-    def multi_key(self, keys: List[str], default="(NO DATA)"):
+    def multi_key(self, keys: List[str], default="_"):
         """
         Queries all objects with provided keys and returns the value for the first one that hits.
         Not ideal but the best way to handle inconsistent tagging across files.

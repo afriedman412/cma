@@ -1,22 +1,22 @@
 import tkinter as tk
 from tkinter import simpledialog, messagebox
 from tkinter.filedialog import askdirectory
-from tkinterdnd2 import DND_FILES, DND_TEXT, TkinterDnD
+from tkinter.ttk import Treeview
+from tkinterdnd2 import TkinterDnD
 import logging
 import subprocess
 from typing import List
 import regex as re
-import os
+from tabulate import tabulate
 
 from ..code.serato_advanced_classes import SeratoCrate, SeratoTrack
 from .audio_player import AudioPlayer
 from ..code.helpers import load_crates, DB
-from ..assets.assets import db_table, db_columns
+from ..assets.assets import db_table, db_columns, pl_columns
 from ..code.config import load_log
 from .gui_helpers import yield_button, cure_library_path
 from .smart_playlist import SmartPlaylistMenu
 from .settings_window import SettingsWindow
-from .library_frame import LibraryFrame
 from .track_info import TrackInfo
 
 class MusicDBGUI:
@@ -46,6 +46,7 @@ class MusicDBGUI:
         # initate data
         self.update(self.q_header)
         self.genres = self.get_genres()
+        self.last_query = self.q_header
 
         self.root.bind("<Command-r>", self.refresh)
         self.root.mainloop()
@@ -80,12 +81,40 @@ class MusicDBGUI:
         self.root.columnconfigure(1, weight=5, minsize=900)
         return
 
+    def init_library(self, root, db_columns):
+        self.tree = Treeview(
+            root, 
+            show="headings", 
+            columns=db_columns, 
+            name="library")
+
+        for col in db_columns:
+            self.tree.heading(col, text=col, command=lambda col_=col: self.sort_by_column(col_, False))
+        return
+
     def init_library(self):
-        self.tree = LibraryFrame(self.root, self.db_columns).tree
+        logging.debug("loading library")
+        self.tree = Treeview(self.root, show="headings", columns=self.db_columns, name="library")
+        for col in db_columns:
+            self.tree.heading(
+                col, 
+                text=col, 
+                command=lambda col_=col: 
+                self.sort_by_column(col_, False)
+                )
         self.tree.grid(row=1, column=1, padx=(5,10), sticky="NEWS")
         self.tree.bind('<Return>', self.add_playlist_track_from_library)
         self.tree.bind('<Double-Button-1>', self.play_song)
-        self.tree.bind('<i>', self.get_track_info)
+        self.tree.bind('<space>', self.play_song)
+        self.tree.bind('<Command-i>', self.get_track_info)
+        return
+
+    def sort_by_column(self, col: str, reverse: bool=False):
+        q = self.last_query + f" ORDER BY {col}"
+        if reverse:
+            q += " DESC"
+        self.update(q)
+        self.tree.heading(col, command=lambda: self.sort_by_column(col, not reverse))
         return
 
     def init_playlist_library(self):
@@ -119,21 +148,23 @@ class MusicDBGUI:
             textvariable=self.playlist_title, 
             anchor="w")
         self.playlist_label.pack(side="left", padx=30)
+        self.playlist_label.bind("<Double-Button-1>", self.rename_playlist)
+        self.playlist_label_frame.grid(row=2, column=1, padx=(5,10), sticky="EW")
+
         yield_button(self.playlist_label_frame, "New Playlist", self.create_new_playlist)
-        yield_button(self.playlist_label_frame, "Rename Playlist", self.rename_playlist)
         yield_button(self.playlist_label_frame, "Save Playlist", self.save_playlist)
         yield_button(self.playlist_label_frame, "Settings", self.load_settings)
         self.audio_player = AudioPlayer(self.playlist_label_frame)
         self.audio_player.frame.pack(side="left", padx=30)
-        self.playlist_label_frame.grid(row=2, column=1, padx=(5,10), sticky="EW")
-
+        
         self.playlist_box = tk.Listbox(self.root, name='playlist')
+        self.playlist_box.grid(row=1, column=1, padx=(5,10), sticky="NEWS")
+        self.playlist_box.bind('<Double-Button-1>', self.play_song)
+        self.playlist_box.bind('<space>', self.play_song)
+        self.playlist_box.bind("<Command-BackSpace>", self.delete_track_from_playlist)
+        self.playlist_box.bind('<Command-i>', self.get_track_info)
         self.playlist_box.grid(row=3, column=1, padx=(5,10), sticky="NEWS")
-        self.playlist_box.drop_target_register(DND_FILES, DND_TEXT)
-        self.playlist_box.dnd_bind('<<Drop>>', self.add_playlist_track_from_library)
-        self.playlist_box.bind("<Double-Button-1>", self.play_song)
-        self.playlist_box.bind("<BackSpace>", self.delete_track_from_playlist)
-        self.playlist_box.bind("<i>", self.get_track_info)
+        return
 
     def init_searchbar(self):
         logging.debug("loading searchbar")
@@ -155,14 +186,17 @@ class MusicDBGUI:
     def init_playlist_buttons(self):
         self.playlist_button_frame = tk.Frame(self.root)
         yield_button(self.playlist_button_frame, "Reload PL", self.reload_playlists)
-        yield_button(self.playlist_button_frame, "New Playlist", self.create_new_playlist)
-        yield_button(self.playlist_button_frame, "Save Playlist", self.save_playlist)
         yield_button(self.playlist_button_frame, "Smart Playlist...", self.create_smart_playlist)
         self.playlist_button_frame.grid(row=0, column=0)
 
     ## TREE/DB MANAGEMENT
     def db_query(self, q):
+        logging.debug(q)
         with DB() as db:
+            if "ORDER" in q:
+                self.last_query = q.split("ORDER")[0].strip()
+            else:
+                self.last_query = q
             return db.query(q)
 
     def update(self, q: str=None):
@@ -203,7 +237,6 @@ class MusicDBGUI:
             OR title LIKE "%{search_query}%"
             OR album LIKE "%{search_query}%"
             OR albumartist LIKE "%{search_query}%"
-            LIMIT 10
             """
         self.update(q)
         return
@@ -214,7 +247,7 @@ class MusicDBGUI:
         genres = []
         for r in rows:
             r = re.sub(r"^\d\s", "", r[0])
-            genres += r.split("/")
+            genres += r.lower().split("/")
         logging.debug("Done getting genres!")
         return sorted(list(set(genres)))
 
@@ -279,11 +312,17 @@ class MusicDBGUI:
         """
         self.playlist_title.set(f"ACTIVE PLAYLIST: {self.active_playlist.crate_name}")
         self.playlist_box.delete(0, tk.END)
-        for t in self.active_playlist.tracks:
-            grouping = t['grouping']
-            self.playlist_box.insert(tk.END, "    //    ".join([repr(t), grouping]))
 
-    def rename_playlist(self):
+        data = [t.mget(pl_columns, True) for t in self.active_playlist.tracks]
+        for d in tabulate(data).split("\n"):
+            self.playlist_box.insert(tk.END, d)
+        return
+
+        # for t in self.active_playlist.tracks:
+            # no need to use .get -- built into the getitem function
+            # self.playlist_box.insert(tk.END, "   //   ".join([repr(t)] + [t[k] for k in pl_columns]))
+
+    def rename_playlist(self, event=None):
         name = simpledialog.askstring("Rename playlist", "Enter new playlist name")
         self.playlist_library[self.active_playlist_index].crate_name = name
         self.update_playlist()

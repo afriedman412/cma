@@ -1,5 +1,7 @@
 db_table ='items'
 db_columns = ['id', 'title', 'artist', 'grouping', 'genre', 'bpm', 'initial_key', 'path']
+pl_columns = ['tart', 'tsng', 'tgen', 'tbpm', 'tkey', 'tgrp', ]
+
 
 char_table = [
     {
