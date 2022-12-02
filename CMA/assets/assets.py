@@ -1,5 +1,5 @@
 db_table ='items'
-db_columns = ['id', 'title', 'artist', 'grouping', 'genre', 'path']
+db_columns = ['id', 'title', 'artist', 'grouping', 'genre', 'bpm', 'initial_key', 'path']
 
 char_table = [
     {

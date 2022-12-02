@@ -20,7 +20,7 @@ class SeratoTrack(SeratoObject):
     def __init__(self, path: str):
         super(SeratoTrack, self).__init__(object_type='otrk', object_data=[])
         self.update_song_data(path)
-        logging.info(f"New SeratoTrack: {self.__repr__()}, {path}")
+        logging.debug(f"New SeratoTrack: {self.__repr__()}, {path}")
 
     def __repr__(self) -> str:
         return " - ".join([self.song_artist, self.song_title])
@@ -98,10 +98,10 @@ class SeratoCrate(SeratoStorage):
     def add_track(self, input: Union[str, bytes, SeratoTrack]):
         if not isinstance(input, SeratoCrate):
             track_object = SeratoTrack(input)
-            logging.info(f"Adding {track_object} to {self.crate_name}")
+            logging.debug(f"Adding {track_object} to {self.crate_name}")
         else:
             track_object = input
-            logging.info(f"Adding {track_object.__repr__()} to {self.crate_name}")
+            logging.debug(f"Adding {track_object.__repr__()} to {self.crate_name}")
         self.objects.append(track_object)
 
     def add_tracks(self, inputs: List[str]):

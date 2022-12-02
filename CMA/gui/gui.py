@@ -35,7 +35,6 @@ class MusicDBGUI:
             columns = self.db_query(f"PRAGMA table_info([{db_table}]);")
             self.db_columns =tuple([c[1] for c in columns])
 
-        print(self.db_columns)
         self.active_playlist_index = 0
         self.init_grid()
         self.init_playlist_library()
@@ -53,7 +52,6 @@ class MusicDBGUI:
         return
 
     def refresh(self, event):
-        print("RELOADING...")
         logging.info("RELOADING")
         self.root.destroy()
         self.__init__()
@@ -191,7 +189,7 @@ class MusicDBGUI:
         return True if has_tree else False
 
     def clear_db_search(self):
-        logging.info("CLEARING SEARCH")
+        logging.debug("CLEARING SEARCH")
         self.search_field.delete(0, tk.END)
         self.update()
         return
@@ -217,7 +215,7 @@ class MusicDBGUI:
         for r in rows:
             r = re.sub(r"^\d\s", "", r[0])
             genres += r.split("/")
-        logging.info("Done getting genres!")
+        logging.debug("Done getting genres!")
         return sorted(list(set(genres)))
 
     ### EVENT MANAGEMENT

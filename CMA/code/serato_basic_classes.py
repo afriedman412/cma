@@ -86,8 +86,8 @@ class SeratoBaseClass:
         # logging.debug(f"yielding SeratoBaseClass object: {object_type}, {given_len}, {dtype}, {label}")
         if not dtype:
             raise LabelTypeError(f"No dtype found for object type {object_type} of length {given_len}")
-        if verbose:
-            print(object_type, given_len, self.object_data.tell(), dtype, label)
+        # if verbose:
+        #     print(object_type, given_len, self.object_data.tell(), dtype, label)
         decoded_data = self.decode_raw_data(given_len, dtype)
         return SeratoObject(object_type=object_type, object_data=decoded_data, given_len=given_len)
 

@@ -32,7 +32,7 @@ def load_log():
     if LOG_PATH:
         subprocess.run(["open",  LOG_PATH])
     else:
-        logging.info("No log path set!")
+        logging.WARNING("No log path set!")
     return
 
 class Config:
@@ -44,19 +44,28 @@ class Config:
         init_logger()
         load_log()
         vars = self.init_app()
-        for k,v in zip(['SERATO_PATH', 'CRATES_PATH', 'DB_PATH', 'CRATE_AUTOLOAD', 'CONFIG_PATH'], vars):
+        for k,v in zip(
+            [
+                'SERATO_PATH', 
+                'CRATES_PATH', 
+                'DB_PATH', 
+                'CRATE_AUTOLOAD', 
+                'CONFIG_PATH',
+                'LOG_LEVEL'
+            ], vars):
             print(k,v)
             os.environ[k] = v
         return
 
-    def init_app(self, config_path: str="/Users/af412/cma_config.json"):
-        logging.info("initializing app...")
+    def init_app(self):
+        logging.debug("initializing app...")
         default_username = getpass.getuser()
         default_serato_path = f"/Users/{default_username}/Music/_Serato_"
         default_db_path = f"/Users/{default_username}/.config/beets/library.db"
+        config_path = f"/Users/{default_username}/cma_config.json"
 
         if os.path.exists(config_path):
-            logging.info("loading config from file")
+            logging.debug("loading config from file")
             config = json.load(open(config_path))
         else:
             config = {}
@@ -64,16 +73,17 @@ class Config:
         serato_path = config.get('serato_path', None)
         crates_path = config.get('crates_path', None)
         db_path = config.get('db_path', None)
-        crate_autoload = config.get('crate_autoload', None)
+        crate_autoload = config.get('crate_autoload', 'Ignore All Crates')
+        log_level = config.get('log_level', 'INFO')
 
         if not serato_path:
-            logging.info("locating Serato Directory")
+            logging.debug("locating Serato Directory")
             _ = askokcancel("Serato Directory", "Press OK to locate your Serato directory")
             serato_path = askdirectory(initialdir=default_serato_path)
-            logging.info(f"setting Serato Directory: {serato_path}")
+            logging.debug(f"setting Serato Directory: {serato_path}")
 
         if not crates_path:
-            logging.info("locating subcrates path")
+            logging.debug("locating subcrates path")
             crates_bool = askokcancel("Subcrates Directory", "Press OK to use default crate path or cancel to choose one.")
             
             if crates_bool:
@@ -84,30 +94,35 @@ class Config:
             else:
                 crates_path = askdirectory(initialdir=serato_path)
 
-            logging.info(f"setting Crates Directory: {crates_path}")
+            logging.debug(f"setting Crates Directory: {crates_path}")
 
         if not db_path:
-            logging.info("locating Beets DB")
+            logging.debug("locating Beets DB")
             db_bool = askokcancel("Beets DB", "Press OK to locate your Beets database, or Cancel to select a folder of mp3s to initiate the database.")
 
             if db_bool:
                 db_path = askopenfilename(initialdir=default_db_path)
-                logging.info(f"setting Beets DB path: {db_path}")
+                logging.debug(f"setting Beets DB path: {db_path}")
             else:
-                logging.info("installing beets from command line")
+                logging.debug("installing beets from command line")
                 subprocess.run(['pip3', 'install', 'beets'])
                 music_path = askdirectory(initialdir=os.getcwd())
-                logging.info(f"loading music files from {music_path}")
+                logging.debug(f"loading music files from {music_path}")
                 print("Building Beets database from path.")
                 subprocess.run(['beet', 'import', '-A', '-C', music_path])
                 db_path = default_db_path
-        logging.info(f"outputting config file to {config_path}")
+
+        if not crate_autoload:
+            crate_autoload = "Ignore All Crates"
+        
+        logging.debug(f"outputting config file to {config_path}")
         json.dump(
             {'serato_path': serato_path, 
             'crates_path': crates_path, 
             'db_path': db_path,
             'config_path': '~/cma_config.json',
-            'crate_autoload': crate_autoload
+            'crate_autoload': crate_autoload,
+            'log_level': 'WARNING'
             }, open(config_path, "w+"))
-        return serato_path, crates_path, db_path, crate_autoload, config_path
+        return serato_path, crates_path, db_path, crate_autoload, config_path, log_level
 

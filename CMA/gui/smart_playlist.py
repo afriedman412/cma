@@ -151,6 +151,7 @@ class SmartPlaylistMenu:
         print(q)
         tracks = self.db_query(q)
         tracks = [dict(zip(self.db_columns, track)) for track in tracks]
+        logging.INFO(f"returned {len(q)} results for query")
         return tracks
 
     def make_crate_from_menu(self):
