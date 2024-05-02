@@ -1,0 +1,2 @@
+[console_scripts]
+beet = beets.ui:main
