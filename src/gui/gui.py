@@ -17,10 +17,9 @@ class MusicDBGUI:
         self.db_table = db_table
         if db_columns:
             self.db_columns = db_columns
-            
         else:
             columns = self.db_query(f"PRAGMA table_info([{self.db_table}]);")
-            self.db_columns =[c[1] for c in columns]
+            self.db_columns = [c[1] for c in columns]
 
         self.playlist = None
         self.active_playlist_index = None
@@ -35,7 +34,7 @@ class MusicDBGUI:
 
         self.root.mainloop()
 
-    ### GRID FUNCTIONS
+    # GRID FUNCTIONS
     def init_grid(self):
         self.root = TkinterDnD.Tk()
 
@@ -55,7 +54,7 @@ class MusicDBGUI:
         """
         self.sidebar_label = tk.Label(self.root, text="PLAYLIST LIBRARY", anchor="n")
         self.sidebar_label.grid(row=0, column=0, sticky="NS")
-        
+
         self.playlist_library = load_all_crates()
         playlist_var = tk.Variable(value=self.playlist_library)
         self.sidebar_box = tk.Listbox(
@@ -67,11 +66,11 @@ class MusicDBGUI:
         self.sidebar_box.grid(row=1, column=0, rowspan=3, sticky="NEWS")
 
         self.new_playlist_button = tk.Button(
-            self.root, 
-            text="New Playlist", 
+            self.root,
+            text="New Playlist",
             command=self.create_new_playlist)
         self.new_playlist_button.grid(row=4, column=0, sticky="EW")
-        return  
+        return
 
     def init_library(self):
         self.tree = ttk.Treeview(
@@ -94,7 +93,7 @@ class MusicDBGUI:
         self.search_field.pack(side="left", fill="x")
 
         self.search_button = tk.Button(
-            self.search_frame, 
+            self.search_frame,
             text="Search",
             command=self.search_db
             )
@@ -102,10 +101,10 @@ class MusicDBGUI:
 
         self.search_frame.grid(row=0, column=1)
 
-    def init_playlist(self, playlist: SeratoCrate=None):
+    def init_playlist(self, playlist: SeratoCrate = None):
         self.playlist_label = tk.Label(
             self.root,
-            text=f"ACTIVE PLAYLIST: {playlist}", 
+            text=f"ACTIVE PLAYLIST: {playlist}",
             anchor="nw")
         self.playlist_label.grid(row=2, column=1, sticky="EW")
 
@@ -115,15 +114,15 @@ class MusicDBGUI:
         self.playlist_box.grid(row=3, column=1, sticky="NEWS")
 
         self.export_playlist_button = tk.Button(
-            self.root, 
-            text="Export Playlist", 
+            self.root,
+            text="Export Playlist",
             command=self.export_playlist)
         self.export_playlist_button.grid(row=4, column=1)
 
         if playlist:
             self.populate_playlist_box(playlist)
-    
-    ### TREE/DB MANAGEMENT
+
+    # TREE/DB MANAGEMENT
     def db_query(self, q):
         with DB() as db:
             return db.query(q)
@@ -131,18 +130,16 @@ class MusicDBGUI:
     def update(self, q: str):
         if self.has_data:
             self.tree.delete(*self.tree.get_children())
-        
         rows = self.db_query(q)
         for r in rows:
             self.tree.insert("", tk.END, values=r)
-        
         for n, c in enumerate(db_columns):
             self.tree.heading(c, text=c)
             if n == 0:
                 self.tree.column(c, width=50, stretch="NO")
             else:
                 self.tree.column(c)
-            
+
     def has_data(self):
         has_tree = self.tree.get_children()
         return True if has_tree else False
@@ -181,10 +178,9 @@ class MusicDBGUI:
                 return p
         except AttributeError:
             pass
-        
         raise "No viable file path!"
 
-    ### EVENT MANAGEMENT
+    # EVENT MANAGEMENT
     def add_playlist_track_from_library(self, event):
         path = self.track_info()['path']
         path = self.cure_library_path(path)
@@ -207,10 +203,11 @@ class MusicDBGUI:
 
     def get_playlist(self, event):
         self.active_playlist_index = self.sidebar_box.curselection()[0]
-        self.playlist = self.playlist_library[self.active_playlist_index] # this is redundant
+        self.playlist = self.playlist_library[self.active_playlist_index]
+        # this is redundant
         self.init_playlist(self.playlist)
 
-    ### PLAYLIST FUNCTIONS
+    # PLAYLIST FUNCTIONS
     def populate_playlist_box(self, crate: SeratoCrate):
         self.playlist_box.delete(0, tk.END)
         for t in crate.tracks:
@@ -235,6 +232,7 @@ class MusicDBGUI:
     def export_playlist(self):
         self.playlist.export_crate()
         print(f"{self.playlist.crate_name} exported!")
+
 
 if __name__ == "__main__":
     MusicDBGUI()
