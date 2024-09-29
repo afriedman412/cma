@@ -9,17 +9,17 @@ import os
 
 from ..src.serato_advanced_classes import SeratoCrate
 from ..src.helpers import load_all_crates, DB
-from ..config.assets import db_table, db_columns
+from ..config.config import DB_TABLE, DB_COLUMNS
 
 
 class MusicDBGUI:
-    def __init__(self, db_table=db_table, db_columns=db_columns):
-        self.db_table = db_table
-        if db_columns:
-            self.db_columns = db_columns
+    def __init__(self, DB_TABLE=DB_TABLE, DB_COLUMNS=DB_COLUMNS):
+        self.DB_TABLE = DB_TABLE
+        if DB_COLUMNS:
+            self.DB_COLUMNS = DB_COLUMNS
         else:
-            columns = self.db_query(f"PRAGMA table_info([{self.db_table}]);")
-            self.db_columns = [c[1] for c in columns]
+            columns = self.db_query(f"PRAGMA table_info([{self.DB_TABLE}]);")
+            self.DB_COLUMNS = [c[1] for c in columns]
 
         self.playlist = None
         self.active_playlist_index = None
@@ -30,7 +30,7 @@ class MusicDBGUI:
         self.init_searchbar()
 
         # initate data
-        self.update(f"SELECT {','.join(self.db_columns)} FROM {self.db_table}")
+        self.update(f"SELECT {','.join(self.DB_COLUMNS)} FROM {self.DB_TABLE}")
 
         self.root.mainloop()
 
@@ -74,14 +74,14 @@ class MusicDBGUI:
 
     def init_library(self):
         self.tree = ttk.Treeview(
-            self.root, show="headings", columns=tuple(db_columns))
+            self.root, show="headings", columns=tuple(DB_COLUMNS))
         self.tree.bind('<Double-Button-1>', self.add_playlist_track_from_library)
         self.tree.grid(row=1, column=1, sticky="NEWS")
         return
 
     def track_info(self):
         i = self.tree.item(self.tree.focus())
-        track_info_dict = dict(zip(self.db_columns, i['values']))
+        track_info_dict = dict(zip(self.DB_COLUMNS, i['values']))
         return track_info_dict
 
     def init_searchbar(self):
@@ -133,7 +133,7 @@ class MusicDBGUI:
         rows = self.db_query(q)
         for r in rows:
             self.tree.insert("", tk.END, values=r)
-        for n, c in enumerate(db_columns):
+        for n, c in enumerate(DB_COLUMNS):
             self.tree.heading(c, text=c)
             if n == 0:
                 self.tree.column(c, width=50, stretch="NO")
@@ -148,7 +148,7 @@ class MusicDBGUI:
         search_query = self.search_field.get()
         q = f"""
             SELECT *
-            FROM {db_table}
+            FROM {DB_TABLE}
             WHERE path LIKE "%{search_query}%"
             OR artist LIKE "%{search_query}%"
             OR title LIKE "%{search_query}%"
@@ -196,8 +196,8 @@ class MusicDBGUI:
     def get_artists(self, event):
         artists_selected = [f'"{self.artist_box.get(i)}"' for i in self.artist_box.curselection()]
         self.update(f"""
-            SELECT {','.join(self.db_columns)}
-            FROM {self.db_table}
+            SELECT {','.join(self.DB_COLUMNS)}
+            FROM {self.DB_TABLE}
             WHERE artist IN ({",".join(artists_selected)});
             """)
 

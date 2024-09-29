@@ -2,19 +2,18 @@ import os
 import sqlite3
 import tkinter as tk
 
-from ..config.assets import db_path, serato_path, verbose
+from ..config.config import DB_PATH, CRATES_PATH, verbose
 from .serato_advanced_classes import SeratoCrate
 
 
 def load_all_crates():
     global verbose
     crates = []
-    crate_dir = os.path.join(serato_path, "Subcrates")
-    for c in os.listdir(crate_dir):
+    for c in os.listdir(CRATES_PATH):
         try:
             if c[-6:] == ".crate":
                 print(c)
-                crate_path = os.path.join(crate_dir, c)
+                crate_path = os.path.join(CRATES_PATH, c)
                 if verbose:
                     print("****" + c.upper(), crate_path)
                 crate = SeratoCrate(crate_path)
@@ -26,7 +25,7 @@ def load_all_crates():
 
 class DB:
     def __init__(self):
-        self._conn = sqlite3.connect(db_path)
+        self._conn = sqlite3.connect(DB_PATH)
         self._cursor = self._conn.cursor()
 
     def __enter__(self):

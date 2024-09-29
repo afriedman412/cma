@@ -1,10 +1,10 @@
 from src.src.serato_advanced_classes import SeratoTrack, SeratoCrate
 import os
 
-serato_path = "/Users/af412/Music/_Serato_"
+SERATO_PATH = "/Users/af412/Music/_Serato_"
 file_path = "./CMA/assets/Dangerous Liasons (DVA Remix).mp3"
-db_path = os.path.join(serato_path, "database V2")
-crate_path = os.path.join(serato_path, "Subcrates", "Scaramanga- Seven Horns, Seven Eyes.crate")
+DB_PATH = os.path.join(SERATO_PATH, "database V2")
+crate_path = os.path.join(SERATO_PATH, "Subcrates", "Scaramanga- Seven Horns, Seven Eyes.crate")
 
 # full track
 full_track = SeratoTrack(file_path)

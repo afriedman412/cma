@@ -13,3 +13,4 @@ test.py
 other_packages/*
 notebooks/*
 testo.py
+venv/*

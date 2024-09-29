@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1
 
-FROM python:3.8
+FROM python:3.10-slim
 
 COPY requirements.txt ./
 RUN apt-get update -y && apt-get install tk -y && pip install -r requirements.txt
 
-COPY /CMA ./CMA
-ADD run.sh launcher.py ./
+COPY /src ./src
+ADD launcher.py ./
 
-CMD ["run.sh"]
+CMD ["python", "launcher.py"]

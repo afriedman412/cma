@@ -4,8 +4,8 @@ from typing import List, Union
 
 from mutagen.id3 import ID3
 
-from ..config.assets import (db_path, db_table, serato_id3_import_table,
-                             serato_path)
+from ..config.config import (DB_PATH, DB_TABLE, SERATO_ID3_IMPORT_TABLE,
+                             SERATO_PATH)
 
 from .serato_basic_classes import SeratoBaseClass, SeratoObject, SeratoStorage
 
@@ -14,10 +14,10 @@ def cure_missing_file(path: str):
     """
     Quick stupid method for searching Beets for song info if mp3 cannot be found.
     """
-    with sqlite3.connect(db_path) as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         q = f"""
             SELECT *
-            FROM {db_table}
+            FROM {DB_TABLE}
             WHERE path == "{path}";
             """
         cur = conn.cursor()
@@ -69,7 +69,7 @@ class SeratoTrack(SeratoObject):
         if verified_path:
             i = ID3(verified_path)
 
-            for id3_tag, serato_tag in serato_id3_import_table.items():
+            for id3_tag, serato_tag in SERATO_ID3_IMPORT_TABLE.items():
                 value = i.get(id3_tag)
                 if value:
                     try:
@@ -128,7 +128,7 @@ class SeratoCrate(SeratoStorage):
         if not output_path:
             if self.crate_name[-6:] != ".crate":
                 self.crate_name = self.crate_name + ".crate"
-            output_path = os.path.join(serato_path, "Subcrates", self.crate_name)
+            output_path = os.path.join(SERATO_PATH, "Subcrates", self.crate_name)
 
         encoded_objects = [b"".join(list(o.encode_object())) for o in self.objects]
 

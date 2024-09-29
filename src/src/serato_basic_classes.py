@@ -3,7 +3,7 @@ import struct
 from typing import Optional, Tuple, Union
 
 
-from ..config.assets import char_table, label_table
+from ..config.config import CHAR_TABLE, LABEL_TABLE
 from .exceptions import LabelTypeError, EncodingError
 
 
@@ -57,11 +57,11 @@ class SeratoBaseClass:
     def peek_next_object(self) -> str:
         return self.peek(4).decode('utf-8')
 
-    def read_char_table(self, k: str, v: Union[str, int], keys: Union[str, list]):
+    def read_CHAR_TABLE(self, k: str, v: Union[str, int], keys: Union[str, list]):
         if isinstance(keys, str):
             keys = [keys]
         try:
-            char_data = next(c for c in char_table if c[k] == v)
+            char_data = next(c for c in CHAR_TABLE if c[k] == v)
             if len(keys) > 1:
                 return tuple([char_data[k_] for k_ in keys])
             else:
@@ -76,7 +76,7 @@ class SeratoBaseClass:
         return object_type, given_len
 
     def get_type_info(self, object_type: str) -> Tuple[str, None]:
-        return label_table.get(object_type, (None, None))  # TODO: redo label
+        return LABEL_TABLE.get(object_type, (None, None))  # TODO: redo label
 
     def yield_object(self):
         """
@@ -118,14 +118,14 @@ class SeratoBaseClass:
             decoded_data = self.decode_compound_data(self.read_bytes(given_len))
                 
         else:
-            expected_len, struct_code = self.read_char_table("dtype", dtype, ['expected_len', 'struct_code'])
+            expected_len, struct_code = self.read_CHAR_TABLE("dtype", dtype, ['expected_len', 'struct_code'])
 
             if given_len != expected_len:
                 print(
                     f"given len ({given_len}) doesn't match expected len ({expected_len}) at position {self.object_data.tell()}\
                          for object type {self.object_type}"
                     )
-                struct_code = self.read_char_table("expected_len", given_len, "struct_code")
+                struct_code = self.read_CHAR_TABLE("expected_len", given_len, "struct_code")
 
             decoded_data = struct.unpack(struct_code, self.read_bytes(given_len))[0]
             
@@ -263,7 +263,7 @@ class SeratoObject(SeratoBaseClass):
 
         elif self.dtype[0] == "u":
             try:
-                struct_code = self.read_char_table("dtype", self.dtype, 'struct_code')
+                struct_code = self.read_CHAR_TABLE("dtype", self.dtype, 'struct_code')
                 encoded_data = struct.pack(struct_code, 0 if not self.object_data else int(self.object_data))
             except Exception:
                 raise EncodingError(f"encoding table expected integer for {self.object_type} ({self.dtype}), value {self.object_data}")
