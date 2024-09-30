@@ -2,9 +2,9 @@ import os
 
 verbose = True
 
-SERATO_PATH = "~/Music/_Serato_"
+SERATO_PATH = "/Users/wolf/Music/_Serato_"
 CRATES_PATH = os.path.join(SERATO_PATH, "Subcrates")
-DB_PATH = "~/.config/beets/library.db"
+DB_PATH = "/Users/wolf/.config/beets/library.db"
 DB_TABLE = 'items'
 DB_COLUMNS = ['id', 'path', 'title', 'artist']
 
