@@ -12,7 +12,7 @@ def load_crates() -> List[SeratoCrate]:
     logging.debug(f"Crate directory: {crate_dir}")
     for c in os.listdir(crate_dir):
         try:
-            if c[-6:] == ".crate":
+            if c.endswith('crate'):
                 crate_path = os.path.join(crate_dir, c)
                 crate_size = os.path.getsize(crate_path)
                 logging.info(f"**** LOADING {c.upper()}")

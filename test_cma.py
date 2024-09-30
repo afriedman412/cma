@@ -1,5 +1,5 @@
-from CMA.serato_advanced_classes import SeratoTrack, SeratoCrate
-from CMA.config import init_logger
+from CMA.code.serato_advanced_classes import SeratoTrack, SeratoCrate
+from CMA.code.config import init_logger
 import logging
 import os
 
