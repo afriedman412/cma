@@ -11,11 +11,11 @@ def load_all_crates():
     crates = []
     for c in os.listdir(CRATES_PATH):
         try:
-            if c[-6:] == ".crate":
+            if c.endswith(".crate"):
                 print(c)
                 crate_path = os.path.join(CRATES_PATH, c)
                 if verbose:
-                    print("****" + c.upper(), crate_path)
+                    print("**** " + c.upper(), crate_path)
                 crate = SeratoCrate(crate_path)
                 crate.get_track_data()
                 crates.append(crate)
